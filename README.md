@@ -8,6 +8,8 @@ Let us assume you have the following ``dsl.py`` file:
 import random
 
 MAXI = 1 << 32 - 1
+random.seed(1)
+
 # Given a type provides a function to sample one element
 sample_dict = {"int": lambda: int(random.randint(-MAXI, MAXI))}
 
