@@ -394,12 +394,14 @@ class DFTA(Generic[U, V]):
         return s
 
     def __str__(self) -> str:
-        s = "finals:" + ", ".join(map(str, self.finals)) + "\n"
-        s += "terminals:" + ", ".join(map(str, self.alphabet)) + "\n"
-        s += "nonterminals:" + ", ".join(map(str, self.states)) + "\n"
+        s = "finals:" + ", ".join(sorted(map(str, self.finals))) + "\n"
+        s += "terminals:" + ", ".join(sorted(map(str, self.alphabet))) + "\n"
+        s += "nonterminals:" + ", ".join(sorted(map(str, self.states))) + "\n"
+        lines = []
         for (P, args), dst in self.rules.items():
             add = ""
             if len(args) > 0:
                 add = " ".join(map(str, args))
-            s += f"{dst} -> '{P}' {add}\n"
-        return s
+            lines.append(f"{dst} <- '{P}' {add}")
+
+        return s + "\n".join(sorted(lines))
