@@ -4,7 +4,6 @@ from tqdm import tqdm
 from gpoe.approximate_constraint_finder import find_approximate_constraints
 from gpoe.evaluator import Evaluator
 from gpoe.regular_constraint_finder import find_regular_constraints
-from gpoe.automaton_generator import grammar_from_constraints
 from gpoe.import_utils import import_file_function
 
 
@@ -84,8 +83,8 @@ def main():
     inputs = sample_inputs(args.samples, sample_dict, equal_dict)
     evaluator = Evaluator(dsl, inputs, equal_dict)
     approx_constraints = find_approximate_constraints(dsl, evaluator)
-    regular_constraints = find_regular_constraints(
-        dsl, evaluator, args.size, target_type
+    grammar, regular_constraints = find_regular_constraints(
+        dsl, evaluator, args.size, target_type, approx_constraints
     )
     with open(args.constraints, "w") as fd:
         fd.write("deleted,equivalent_to,type_request\n")
@@ -94,7 +93,6 @@ def main():
         ):
             fd.write(f"{deleted},{representative},{type_req}\n")
 
-    grammar = grammar_from_constraints(dsl, approx_constraints + regular_constraints)
     # Save DFTA
     with open(args.output, "w") as fd:
         fd.write(str(grammar))
