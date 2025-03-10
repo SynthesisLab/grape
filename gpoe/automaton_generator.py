@@ -9,7 +9,10 @@ from gpoe.tree_automaton import DFTA
 def __type_split__(type_str: str) -> tuple[str, ...]:
     return tuple(map(lambda x: x.strip(), type_str.strip().split("->")))
 
+
 __GRAMMARS__ = {}
+
+
 def grammar_from_type_constraints(
     dsl: dict[str, tuple[str, callable]], requested_type: str
 ) -> DFTA[str, Program]:
@@ -80,7 +83,7 @@ def __grammar_for_program__(
     dsl: dict[str, tuple[str, callable]], program: Program, type_req: str
 ) -> DFTA[str, Program]:
     if isinstance(program, Variable):
-        args = list(map(lambda x:x.strip(), type_req.split("->")))
+        args = list(map(lambda x: x.strip(), type_req.split("->")))
         vtype = args[program.no]
         args[-1] = vtype
         return grammar_from_type_constraints(dsl, "->".join(args))
@@ -89,7 +92,9 @@ def __grammar_for_program__(
         return DFTA({(program, tuple()): rtype}, {rtype})
     elif isinstance(program, Function):
         letter = program.function
-        args_dfta = [__grammar_for_program__(dsl, arg, type_req) for arg in program.arguments]
+        args_dfta = [
+            __grammar_for_program__(dsl, arg, type_req) for arg in program.arguments
+        ]
         return __tree_combine_on_letter__(letter, args_dfta)
 
 
@@ -105,9 +110,10 @@ def grammar_from_constraints(
     # base = base.complement()
     minim = base.minimise()
     mapping = {}
+
     def get_name(x) -> int:
         if x not in mapping:
             mapping[x] = f"S{len(mapping)}"
         return mapping[x]
-    return minim.map_states(get_name)
 
+    return minim.map_states(get_name)

@@ -8,7 +8,7 @@ class Program(ABC):
 
     def __repr__(self):
         return str(self)
-    
+
     def same_var_used_more_than_once(self) -> tuple[bool, set[int]]:
         used = set()
         return self.__used_vars__(used), used
@@ -28,7 +28,7 @@ class Variable(Program):
 
     def __str__(self):
         return f"var{self.no}"
-    
+
     def __used_vars__(self, used: set[int]) -> bool:
         if self.no in used:
             return True
@@ -43,7 +43,7 @@ class Primitive(Program):
 
     def __str__(self):
         return self.name
-    
+
     def __used_vars__(self, used: set[int]) -> bool:
         return False
 
@@ -57,7 +57,7 @@ class Function(Program):
     def __str__(self):
         args = ", ".join(map(str, self.arguments))
         return f"{self.function}({args})"
-    
+
     def __used_vars__(self, used: set[int]) -> bool:
         if self.function.__used_vars__(used):
             return True
