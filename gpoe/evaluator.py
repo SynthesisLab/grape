@@ -29,6 +29,8 @@ class Evaluator:
             self.full_inputs[type_req] = elems
 
     def eval(self, program: Program, type_req: str) -> Optional[Program]:
+        if program in self.memoization:
+            return None
         self.__gen_full_inputs__(type_req)
         # Compute its values
         outs = []
