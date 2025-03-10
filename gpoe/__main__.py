@@ -30,9 +30,13 @@ def sample_inputs(
 
 def load_file(
     file_path: str,
-) -> Tuple[dict[str, Tuple[str, callable]], dict[str, callable], dict[str, callable]]:
-    space = import_file_function(file_path[:-3], ["dsl", "sample_dict", "equal_dict"])()
-    return space.dsl, space.sample_dict, space.equal_dict
+) -> Tuple[
+    dict[str, Tuple[str, callable]], str, dict[str, callable], dict[str, callable]
+]:
+    space = import_file_function(
+        file_path[:-3], ["dsl", "sample_dict", "equal_dict", "target_type"]
+    )()
+    return space.dsl, space.target_type, space.sample_dict, space.equal_dict
 
 
 def parse_args():
@@ -76,17 +80,21 @@ def parse_args():
 
 def main():
     args = parse_args()
-    dsl, sample_dict, equal_dict = load_file(args.dsl)
+    dsl, target_type, sample_dict, equal_dict = load_file(args.dsl)
     inputs = sample_inputs(args.samples, sample_dict, equal_dict)
     evaluator = Evaluator(dsl, inputs, equal_dict)
-    some_constraints = find_approximate_constraints(dsl, evaluator)
-    regular_constraints = find_regular_constraints(dsl, evaluator, args.size)
+    approx_constraints = find_approximate_constraints(dsl, evaluator)
+    regular_constraints = find_regular_constraints(
+        dsl, evaluator, args.size, target_type
+    )
     with open(args.constraints, "w") as fd:
         fd.write("deleted,equivalent_to,type_request\n")
-        for deleted, representative, type_req in some_constraints + regular_constraints:
+        for deleted, representative, type_req in (
+            approx_constraints + regular_constraints
+        ):
             fd.write(f"{deleted},{representative},{type_req}\n")
 
-    grammar = grammar_from_constraints(dsl, some_constraints + regular_constraints)
+    grammar = grammar_from_constraints(dsl, approx_constraints + regular_constraints)
     # Save DFTA
     with open(args.output, "w") as fd:
         fd.write(str(grammar))

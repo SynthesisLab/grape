@@ -22,6 +22,8 @@ dsl = {
     "~": ("int -> int", lambda x: ~x),
     "1": ("int", 1)
 }
+# Type of object you want to produce
+target_type = "int"
 
 # (Optional) Given a type provides an implementation of ==
 # Warning: this is not fully supported so better leave it empty
