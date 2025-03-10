@@ -6,6 +6,9 @@ class Program(ABC):
     def __hash__(self):
         return self._hash
 
+    def __eq__(self, other: "Program") -> bool:
+        return self._hash == other._hash
+
     def __repr__(self):
         return str(self)
 
@@ -55,8 +58,8 @@ class Function(Program):
         self._hash = hash((function, *arguments))
 
     def __str__(self):
-        args = ", ".join(map(str, self.arguments))
-        return f"{self.function}({args})"
+        args = " ".join(map(str, self.arguments))
+        return f"({self.function} {args})"
 
     def __used_vars__(self, used: set[int]) -> bool:
         if self.function.__used_vars__(used):
