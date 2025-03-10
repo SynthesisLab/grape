@@ -100,12 +100,12 @@ def __fix_vars__(program: Program, var_merge: dict[int, int]) -> Program:
 
 
 def grammar_from_memory(
-    memory: dict[Any, dict[int, list[Program]]], type_req: str
+    memory: dict[Any, dict[int, list[Program]]], type_req: str, prev_finals: set[str]
 ) -> DFTA[str, Program]:
     rules = {}
     max_size = max(max(memory[state].keys()) for state in memory)
     args_type = __type_split__(type_req)[:-1]
-    rtype = __type_split__(type_req)[-1]
+    # Compute variable merging: all variables of same type should be merged
     var_merge = {}
     var_merge_rev = {}
     for i, t in enumerate(args_type):
@@ -114,21 +114,25 @@ def grammar_from_memory(
         else:
             var_merge_rev[t] = i
             var_merge[i] = i
+    # Produce rules incrementally
     finals = set()
     for size in range(1, max_size):
         for state in memory:
             programs = memory[state][size]
             for x in programs:
                 x = __fix_vars__(x, var_merge)
+                dst = str(x)
                 if isinstance(x, Function):
-                    rules[(x.function, tuple(map(str, x.arguments)))] = str(x)
+                    rules[(x.function, tuple(map(str, x.arguments)))] = dst
                 else:
-                    rules[(x, ())] = str(x)
-                if state == rtype:
-                    finals.add(str(x))
+                    rules[(x, ())] = dst
+                if state in prev_finals:
+                    finals.add(dst)
 
     dfta = DFTA(rules, finals)
     dfta.reduce()
+    # return dfta
+
     ndfta = dfta.minimise()
     mapping = {}
 

@@ -75,4 +75,4 @@ def find_regular_constraints(
         pass
     pbar.update()
     pbar.close()
-    return grammar_from_memory(enumerator.memory, type_req), constraints
+    return grammar_from_memory(enumerator.memory, type_req, grammar.finals), constraints
