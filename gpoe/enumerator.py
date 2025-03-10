@@ -13,12 +13,9 @@ def __integer_partitions__(k: int, n: int) -> Generator[Tuple[int, ...], None, N
 
 
 class Enumerator:
-    def __init__(
-        self, grammar: DFTA[Any, Program], subprograms_to_prune: set[Program] = set()
-    ):
+    def __init__(self, grammar: DFTA[Any, Program]):
         self.grammar = grammar
         self.states = list(self.grammar.states)
-        self.subprograms_to_prune = subprograms_to_prune
         self.__setup__()
 
     def __setup__(self) -> None:
@@ -72,8 +69,6 @@ class Enumerator:
                     for derivation in self.grammar.reversed_rules[state]:
                         letter, args = derivation
                         if len(args) == 0:
-                            if letter in self.subprograms_to_prune:
-                                continue
                             should_keep = True
                             if state in self.grammar.finals:
                                 should_keep = yield letter
@@ -88,8 +83,6 @@ class Enumerator:
                                 args, self.current_size - 1
                             ):
                                 program = Function(letter, list(combination))
-                                if program in self.subprograms_to_prune:
-                                    continue
                                 if state in self.grammar.finals:
                                     should_keep = yield program
                                     if should_keep:
