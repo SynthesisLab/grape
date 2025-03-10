@@ -1,8 +1,9 @@
 from collections import defaultdict
-from itertools import product
+from itertools import combinations_with_replacement, product
 from typing import (
     Callable,
     Dict,
+    Generator,
     Generic,
     List,
     Literal,
@@ -380,6 +381,37 @@ class DFTA(Generic[U, V]):
             },
             set(map(mapping, self.finals)),
         )
+
+    def trees_at_size(self, size: int) -> int:
+        """
+        Return the number of trees produced of the given size.
+        """
+
+        def __integer_partitions__(
+            k: int, n: int
+        ) -> Generator[Tuple[int, ...], None, None]:
+            choices = list(range(1, n - k + 2))
+            for elements in combinations_with_replacement(choices, k):
+                if sum(elements) == n:
+                    yield elements
+
+        states = self.states
+        count: dict[U, dict[int, int]] = {state: {} for state in states}
+        for csize in range(1, size + 1):
+            for state in states:
+                count[state][csize] = 0
+                for derivation in self.reversed_rules[state]:
+                    _, args = derivation
+                    if len(args) == 0 and csize == 1:
+                        count[state][csize] += 1
+                    elif len(args) > 0:
+                        for partition in __integer_partitions__(len(args), csize - 1):
+                            total = 1
+                            for arg_size, arg in zip(partition, args):
+                                total *= count[arg][arg_size]
+                            count[state][csize] += total
+
+        return sum(count[state][size] for state in self.finals)
 
     def __repr__(self) -> str:
         s = "Print a DFTA\n"
