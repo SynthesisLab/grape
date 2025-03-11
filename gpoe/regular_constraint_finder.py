@@ -4,6 +4,7 @@ from gpoe.evaluator import Evaluator
 from gpoe.program import Program
 from gpoe.automaton_generator import (
     grammar_from_memory,
+    grammar_from_type_constraints,
     grammar_from_type_constraints_and_commutativity,
 )
 from gpoe.tree_automaton import DFTA
@@ -40,12 +41,19 @@ def find_regular_constraints(
     # Find all type requests
     type_req = __infer_mega_type_req__(dsl, rtype)
 
+    base_grammar = grammar_from_type_constraints(dsl, type_req)
     grammar = grammar_from_type_constraints_and_commutativity(
         dsl, type_req, [p[0] for p in approx_constraints]
     )
+    print("at size:", max_size)
+    print("\tno pruning:", base_grammar.trees_at_size(max_size))
+    ntrees = grammar.trees_at_size(max_size)
+    print("\tcommutativity pruned:", ntrees)
+    assert base_grammar.trees_at_size(max_size) >= grammar.trees_at_size(max_size)
     enumerator = Enumerator(grammar)
     # Generate all programs until some size
     pbar = tqdm(total=max_size + 1)
+    target_size = max(len(types.arguments(t)) for t, _ in dsl.values()) + 1
     pbar.set_description_str("regular constraints")
     gen = enumerator.enumerate_until_size(max_size + 1)
     program = next(gen)
@@ -68,8 +76,35 @@ def find_regular_constraints(
             if last_size < enumerator.current_size:
                 pbar.update()
                 last_size = enumerator.current_size
+                if enumerator.current_size > target_size:
+                    new_grammar = grammar_from_memory(
+                        dsl, enumerator.memory, type_req, grammar.finals, True
+                    )
+                    target_size += 2
+                    pbar.set_postfix_str(
+                        f"{new_grammar.trees_at_size(max_size) / ntrees:.2%}"
+                    )
     except StopIteration:
         pass
     pbar.update()
     pbar.close()
-    return grammar_from_memory(enumerator.memory, type_req, grammar.finals), constraints
+    reduced_grammar = grammar_from_memory(
+        dsl, enumerator.memory, type_req, grammar.finals, True
+    )
+    print("at size:", max_size)
+    basen = base_grammar.trees_at_size(max_size)
+    t = reduced_grammar.trees_at_size(max_size)
+    print(
+        "\tmethod: ratio no pruning | ratio comm. pruned | ratio pruned",
+    )
+    for n, v in [
+        ("no pruning", basen),
+        ("commutativity pruned", ntrees),
+        ("pruned", t),
+    ]:
+        print(
+            f"\t{n}: {v / basen:.2%} | {v / ntrees:.2%} | {v / t:.2%}",
+        )
+    return grammar_from_memory(
+        dsl, enumerator.memory, type_req, grammar.finals, False
+    ), constraints

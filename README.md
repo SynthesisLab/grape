@@ -40,5 +40,4 @@ python -m gpoe dsl.py --size 7 --samples 300 -o grammar.txt --constraints constr
 
 ## TODO
 
-- Fix compilation of constraints
 - Offer choice of samples per type instead of globally since it can cause issues (e.g. boolean)
