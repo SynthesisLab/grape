@@ -95,7 +95,7 @@ def main():
 
     # Save DFTA
     with open(args.output, "w") as fd:
-        fd.write(str(grammar))
+        fd.write(repr(grammar))
 
 
 if __name__ == "__main__":

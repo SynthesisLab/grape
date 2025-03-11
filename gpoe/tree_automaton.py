@@ -414,16 +414,17 @@ class DFTA(Generic[U, V]):
         return sum(count[state][size] for state in self.finals)
 
     def __repr__(self) -> str:
-        s = "Print a DFTA\n"
+        s = "finals:" + ",".join(sorted(map(str, self.finals))) + "\n"
+        s += "terminals:" + ",".join(sorted(map(str, self.alphabet))) + "\n"
+        s += "nonterminals:" + ",".join(sorted(map(str, self.states))) + "\n"
+        lines = []
         for (P, args), dst in self.rules.items():
             add = ""
             if len(args) > 0:
-                add = "(" + ", ".join(map(str, args)) + ")"
-            s += f"\t{P}{add} -> {dst}"
-            if dst in self.finals:
-                s += " (FINAL)"
-            s += "\n"
-        return s
+                add = "," + ",".join(map(str, args))
+            lines.append(f"{dst},{P}{add}")
+
+        return s + "\n".join(sorted(lines))
 
     def __str__(self) -> str:
         s = "finals:" + ", ".join(sorted(map(str, self.finals))) + "\n"
