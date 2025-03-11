@@ -50,9 +50,9 @@ class DFTA(Generic[U, V]):
                 ]
             ],
         ] = {}
-        self.__fill_reversed_rules__()
+        self.refresh_reversed_rules()
 
-    def __fill_reversed_rules__(self) -> None:
+    def refresh_reversed_rules(self) -> None:
         self.reversed_rules = defaultdict(list)
         for r, s in self.rules.items():
             self.reversed_rules[s].append(r)
@@ -126,7 +126,7 @@ class DFTA(Generic[U, V]):
         """
         self.__remove_unreachable__()
         self.__remove_unproductive__()
-        self.__fill_reversed_rules__()
+        self.refresh_reversed_rules()
 
     def read_product(self, other: "DFTA[W, V]") -> "DFTA[Tuple[U, W], V]":
         """
