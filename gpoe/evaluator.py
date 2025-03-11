@@ -1,6 +1,7 @@
 from itertools import product
 from typing import Any, Optional, Tuple
 from gpoe.program import Function, Primitive, Program, Variable
+import gpoe.types as types
 
 
 class Evaluator:
@@ -19,7 +20,7 @@ class Evaluator:
 
     def __gen_full_inputs__(self, type_req: str) -> None:
         if type_req not in self.full_inputs:
-            args = list(map(lambda x: x.strip(), type_req.split("->")[:-1]))
+            args = types.arguments(type_req)
             possibles = [self.base_inputs[arg] for arg in args]
             elems = []
             for full_input in product(*possibles):
@@ -38,7 +39,7 @@ class Evaluator:
             out = self.__eval__(program, full_input)
             outs.append(out)
         # Check equivalence class
-        rtype = type_req.split("->")[-1].strip()
+        rtype = types.return_type(type_req)
         key = tuple(outs)
         if rtype not in self.equiv_classes:
             self.equiv_classes[rtype] = {}

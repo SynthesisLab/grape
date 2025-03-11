@@ -4,10 +4,7 @@ from typing import Any
 
 from gpoe.program import Function, Primitive, Program, Variable
 from gpoe.tree_automaton import DFTA
-
-
-def __type_split__(type_str: str) -> tuple[str, ...]:
-    return tuple(map(lambda x: x.strip(), type_str.strip().split("->")))
+import gpoe.types as types
 
 
 __GRAMMARS__ = {}
@@ -17,17 +14,15 @@ def grammar_from_type_constraints(
     dsl: dict[str, tuple[str, callable]], requested_type: str
 ) -> DFTA[str, Program]:
     if requested_type not in __GRAMMARS__:
-        req_type = __type_split__(requested_type)
-        finals = set([req_type[-1]])
+        args, rtype = types.parse(requested_type)
+        finals = set([rtype])
         rules: dict[tuple[Program, tuple[str, ...]], str] = {}
         # Add variables
-        for i, state in enumerate(req_type[:-1]):
+        for i, state in enumerate(rtype):
             rules[(Variable(i), tuple())] = state
         # Add elements from DSL
         for primitive, (str_type, fn) in dsl.items():
-            btype = __type_split__(str_type)
-            rtype = btype[-1]
-            args = btype[:-1]
+            args, rtype = types.parse(str_type)
             rules[(Primitive(primitive), args)] = rtype
 
         dfta = DFTA(rules, finals)
@@ -40,27 +35,25 @@ def grammar_from_type_constraints(
 def grammar_from_type_constraints_and_commutativity(
     dsl: dict[str, tuple[str, callable]], requested_type: str, programs: list[Program]
 ) -> DFTA[str, Program]:
-    req_type = __type_split__(requested_type)
-    finals = set([req_type[-1]])
+    gargs, grtype = types.parse(requested_type)
+    finals = set([grtype])
     rules: dict[tuple[Program, tuple[str, ...]], str] = {}
     prims_per_type = defaultdict(list)
     # Add variables
-    for i, state in enumerate(req_type[:-1]):
+    for i, state in enumerate(gargs):
         rules[(Variable(i), tuple())] = state
         if state not in prims_per_type[state]:
             prims_per_type[state].append(state)
 
     # Compute dict type -> primitives
     for primitive, (str_type, fn) in dsl.items():
-        rtype = __type_split__(str_type)[-1]
+        rtype = types.return_type(str_type)
         prims_per_type[rtype].append(primitive)
     # Add elements from DSL
     for primitive, (str_type, fn) in dsl.items():
         # check if this primitive is commutative
-        btype = __type_split__(str_type)
-        args = btype[:-1]
-        rtype = btype[-1]
-        if rtype == req_type[-1]:
+        args, rtype = types.parse(str_type)
+        if rtype == grtype:
             finals.add(primitive)
         patterns = [
             tuple(

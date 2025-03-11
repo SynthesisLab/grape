@@ -1,6 +1,7 @@
 from typing import Generator, TypeVar
 from gpoe.evaluator import Evaluator
 from gpoe.program import Function, Primitive, Program, Variable
+import gpoe.types as types
 
 
 def find_approximate_constraints(
@@ -9,10 +10,6 @@ def find_approximate_constraints(
 ) -> list[tuple[Program, Program, str]]:
     constraints = __find_commutativity__(dsl, evaluator)
     return constraints
-
-
-def __type_split__(type_str: str) -> tuple[str, ...]:
-    return tuple(map(lambda x: x.strip(), type_str.strip().split("->")))
 
 
 T = TypeVar("T")
@@ -42,41 +39,38 @@ def __add_commutative_constraints__(
 ) -> list[tuple[Program, Program, str]]:
     constraints = []
     stype = dsl[primitive][0]
-    btype = __type_split__(stype)
-    args_type = btype[:-1]
+    args_type, rtype = types.parse(stype)
     swapped_indices = [i for i, x in enumerate(args) if x.no != i]
     swapped_type = args_type[swapped_indices[0]]
 
     nargs = len(args)
 
     for p1, (stype1, _) in dsl.copy().items():
-        btype1 = __type_split__(stype1)
-        rtype1 = btype1[-1]
+        args1, rtype1 = types.parse(stype1)
         if rtype1 != swapped_type:
             continue
-        nargs1 = len(btype1) - 1
+        nargs1 = len(args1)
         first_arg = (
             Function(Primitive(p1), [Variable(i + nargs) for i in range(nargs1)])
-            if len(btype1) > 1
+            if nargs1 > 0
             else Primitive(p1)
         )
-        type_req1 = args_type + btype1[:-1]
+        type_req1 = args_type + args1
 
         for p2, (stype2, _) in dsl.items():
             if p1 >= p2:
                 continue
-            btype2 = __type_split__(stype2)
-            rtype2 = btype2[-1]
+            args2, rtype2 = types.parse(stype2)
             if rtype2 != swapped_type:
                 continue
-            type_req2 = type_req1 + btype2[:-1] + (btype[-1],)
+            type_req2 = type_req1 + args2 + (rtype,)
 
             second_arg = (
                 Function(
                     Primitive(p2),
-                    [Variable(i + nargs + nargs1) for i in range(len(btype2) - 1)],
+                    [Variable(i + nargs + nargs1) for i in range(len(args2))],
                 )
-                if len(btype2) > 1
+                if len(args2) > 0
                 else Primitive(p2)
             )
             # Valid pair that we have to forbid
@@ -100,8 +94,7 @@ def __find_commutativity__(
 ) -> list[tuple[Program, Program, str]]:
     constraints = []
     for prim, (stype, _) in dsl.items():
-        btype = __type_split__(stype)
-        args = btype[:-1]
+        args = types.arguments(stype)
         if len(args) < 2:
             continue
         base_program = Function(

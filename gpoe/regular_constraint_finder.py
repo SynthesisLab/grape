@@ -7,19 +7,16 @@ from gpoe.automaton_generator import (
     grammar_from_type_constraints_and_commutativity,
 )
 from gpoe.tree_automaton import DFTA
+import gpoe.types as types
 
 from tqdm import tqdm
-
-
-def __type_split__(type_str: str) -> tuple[str, ...]:
-    return tuple(map(lambda x: x.strip(), type_str.strip().split("->")))
 
 
 def __infer_mega_type_req__(dsl: dict[str, tuple[str, callable]], rtype: str) -> str:
     # Capture max number of args of type that each type request needs
     use_all = defaultdict(int)
     for str_type, _ in dsl.values():
-        args = __type_split__(str_type)[:-1]
+        args = types.arguments(str_type)
         for t in args:
             n = sum(t == a for a in args)
             use_all[t] = max(use_all[t], n)
