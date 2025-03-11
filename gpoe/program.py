@@ -16,6 +16,13 @@ class Program(ABC):
         used = set()
         return self.__used_vars__(used), used
 
+    def can_be_embed_into(self, other: "Program") -> bool:
+        return False
+
+    @abstractmethod
+    def size(self) -> int:
+        pass
+
     @abstractmethod
     def __used_vars__(self, used: set[int]) -> bool:
         """
@@ -62,6 +69,12 @@ class Variable(Program):
         used.add(self.no)
         return False
 
+    def can_be_embed_into(self, other: "Program") -> bool:
+        return True
+
+    def size(self) -> int:
+        return 1
+
 
 class Primitive(Program):
     def __init__(self, name: str):
@@ -73,6 +86,12 @@ class Primitive(Program):
 
     def __used_vars__(self, used: set[int]) -> bool:
         return False
+
+    def can_be_embed_into(self, other: "Program") -> bool:
+        return self == other
+
+    def size(self) -> int:
+        return 1
 
 
 class Function(Program):
@@ -89,3 +108,15 @@ class Function(Program):
         if self.function.__used_vars__(used):
             return True
         return any(arg.__used_vars__(used) for arg in self.arguments)
+
+    def can_be_embed_into(self, other: "Program") -> bool:
+        if isinstance(other, Function):
+            return self.function.can_be_embed_into(other.function) and all(
+                argm.can_be_embed_into(argo)
+                for argm, argo in zip(self.arguments, other.arguments)
+            )
+        else:
+            return False
+
+    def size(self) -> int:
+        return self.function.size() + sum(arg.size() for arg in self.arguments)
