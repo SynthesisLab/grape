@@ -18,7 +18,7 @@ def grammar_from_type_constraints(
         finals = set([rtype])
         rules: dict[tuple[Program, tuple[str, ...]], str] = {}
         # Add variables
-        for i, state in enumerate(rtype):
+        for i, state in enumerate(args):
             rules[(Variable(i), tuple())] = state
         # Add elements from DSL
         for primitive, (str_type, fn) in dsl.items():
