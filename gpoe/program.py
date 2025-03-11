@@ -23,6 +23,30 @@ class Program(ABC):
         """
         pass
 
+    @classmethod
+    def parse(cls, program: str) -> "Program":
+        if "(" == program[0]:
+            program = program.strip("() ")
+            function = Program.parse(program[: program.find(" ")])
+            rest = program[program.find(" ") + 1 :].strip()
+            args = []
+            while len(rest) > 0:
+                arg = Program.parse(rest)
+                rest = rest[len(str(arg)) :].strip(" ")
+                args.append(arg)
+                if rest.startswith(")"):
+                    break
+            return Function(function, args)
+
+        else:
+            if " " in program:
+                program = program[: program.find(" ")]
+            program = program.strip("() ")
+            if program.startswith("var"):
+                return Variable(int(program[len("var") :]))
+            else:
+                return Primitive(program)
+
 
 class Variable(Program):
     def __init__(self, no: int):
