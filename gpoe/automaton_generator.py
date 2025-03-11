@@ -1,6 +1,7 @@
 from collections import defaultdict
 from itertools import product
 from typing import Any
+from tqdm import tqdm
 
 from gpoe.enumerator import Enumerator
 from gpoe.program import Function, Primitive, Program, Variable
@@ -93,22 +94,6 @@ def __fix_vars__(program: Program, var_merge: dict[int, int]) -> Program:
         )
 
 
-def __get_args__(program: str) -> tuple[list[str], int]:
-    elements = program.split(" ")
-    first_level = []
-    level = 0
-    depth = 0
-    for el in elements:
-        if ")" in elements:
-            level -= 1
-        elif ")" in elements:
-            level += 1
-            depth = max(level, depth)
-        if level == 0:
-            first_level.append(el.strip("() "))
-    return first_level, depth
-
-
 def grammar_from_memory(
     dsl: dict[str, tuple[str, callable]],
     memory: dict[Any, dict[int, list[Program]]],
@@ -155,49 +140,54 @@ def grammar_from_memory(
     # 2. Say that all not consumed must be consumed at some point
     # Assume they must be from some function
     state_collapse = {}
-    for state in not_consumed:
-        primitive = state[1 : state.find(" ")]
-        rtype = types.return_type(dsl[primitive][0])
+    prod_progs = {Program.parse(other) for other in prod_states}
+    progs_by_size: dict[int, list[Program]] = {size: [] for size in range(max_size + 1)}
+    for p in prod_progs:
+        progs_by_size[p.size()].append(p)
+
+    for state in tqdm(not_consumed, desc="extending automaton"):
         # We should merge their state with the state of the highest sketch match
-        # But too hard so TODO
-        # instead redirect them to first level things
-        # args, depth = __get_args__(state[state.find(" ") + 1 : -1])
-        #     print("\tstate:", state, "args:", args, "depth:", depth)
-        # if depth == 0:
-        target = Variable(type2var[rtype])
+        p = Program.parse(state)
+        merge_candidates = []
+        size_of_canditates = 0
+        for csize in reversed(range(1, p.size())):
+            if csize < size_of_canditates:
+                break
+            for prog in progs_by_size[csize]:
+                if prog != p and prog.can_be_embed_into(p):
+                    merge_candidates.append(prog)
+                    break
+        # TODO: improve by choosing most restrictive one
+        target = merge_candidates.pop(0)
         state_collapse[state] = str(target)
-        # else:
-        #     pass
+        # print("SOURCE:", state, "candidates:", merge_candidates)
+
     dfta = DFTA(rules, finals)
     dfta = dfta.map_states(lambda x: state_collapse.get(x, x))
     dfta.reduce()
-    ndfta = dfta.minimise()
+    # Note: it is useless to minimise the automaton is already minimal
     mapping = {}
 
-    def get_name(x) -> str:
+    def get_name(x: str) -> str:
         if x not in mapping:
             mapping[x] = f"S{len(mapping)}"
         return mapping[x]
 
-    relevant_dfta = ndfta.map_states(get_name)
+    relevant_dfta = dfta.map_states(get_name)
 
     # TO COUNT TREES YOU NEED TO RE ADD OTHER VARIABLES
     if keep_type_req:
         for i, j in var_merge.items():
             old = Variable(i)
-            dfta.rules[(old, ())] = str(Variable(j)).strip()
             for (prog, _), dst in relevant_dfta.rules.copy().items():
                 if isinstance(prog, Variable) and prog.no == j:
                     relevant_dfta.rules[(old, ())] = dst
 
-        dfta.refresh_reversed_rules()
         relevant_dfta.refresh_reversed_rules()
         print(
             "memory:",
             total_programs,
             "dfta:",
-            dfta.trees_at_size(max_size),
-            "ndfta:",
             relevant_dfta.trees_at_size(max_size),
         )
 
@@ -217,11 +207,14 @@ def test(memory, dfta, max_size):
 
     new_memory_to_size = {}
     old_memory_to_size = {}
+    total = 0
     for value in enum.memory.values():
         for size, programs in value.items():
             if size not in new_memory_to_size:
                 new_memory_to_size[size] = []
             new_memory_to_size[size] += programs
+            if size == max_size:
+                total += len(programs)
     for value in memory.values():
         for size, programs in value.items():
             if size not in old_memory_to_size:
@@ -229,11 +222,12 @@ def test(memory, dfta, max_size):
             old_memory_to_size[size] += programs
 
     sizes = set(new_memory_to_size.keys()) | set(old_memory_to_size.keys())
-
+    print("from enumeration:", total)
     for size in sizes:
         if size not in new_memory_to_size:
             assert False
-        # elif size not in old_memory_to_size:
+        elif size not in old_memory_to_size:
+            pass
         # print("+", new_memory_to_size[size])
         else:
             # more = set(new_memory_to_size[size]) - set(old_memory_to_size[size])

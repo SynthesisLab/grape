@@ -53,7 +53,7 @@ def find_regular_constraints(
     enumerator = Enumerator(grammar)
     # Generate all programs until some size
     pbar = tqdm(total=max_size + 1)
-    target_size = max(len(types.arguments(t)) for t, _ in dsl.values()) + 1
+    # target_size = max(len(types.arguments(t)) for t, _ in dsl.values()) + 1
     pbar.set_description_str("regular constraints")
     gen = enumerator.enumerate_until_size(max_size + 1)
     program = next(gen)
@@ -76,16 +76,18 @@ def find_regular_constraints(
             if last_size < enumerator.current_size:
                 pbar.update()
                 last_size = enumerator.current_size
-                if enumerator.current_size > target_size:
-                    new_grammar = grammar_from_memory(
-                        dsl, enumerator.memory, type_req, grammar.finals, True
-                    )
-                    target_size += 2
-                    pbar.set_postfix_str(
-                        f"{new_grammar.trees_at_size(max_size) / ntrees:.2%}"
-                    )
+                pbar.set_postfix_str(f"{len(constraints)}")
+                # if enumerator.current_size > target_size:
+                #     new_grammar = grammar_from_memory(
+                #         dsl, enumerator.memory, type_req, grammar.finals, True
+                #     )
+                #     target_size += 2
+                #     pbar.set_postfix_str(
+                #         f"{new_grammar.trees_at_size(max_size) / ntrees:.2%}"
+                #     )
     except StopIteration:
         pass
+    pbar.set_postfix_str(f"{len(constraints)}")
     pbar.update()
     pbar.close()
     reduced_grammar = grammar_from_memory(
