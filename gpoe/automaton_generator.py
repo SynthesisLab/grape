@@ -100,7 +100,7 @@ def grammar_from_memory(
     type_req: str,
     prev_finals: set[str],
     keep_type_req: bool,
-) -> DFTA[str, Program]:
+) -> tuple[DFTA[str, Program], int]:
     rules: dict[tuple[Program, tuple[str, ...]], str] = {}
     max_size = max(max(memory[state].keys()) for state in memory)
     args_type = types.arguments(type_req)
@@ -174,25 +174,32 @@ def grammar_from_memory(
         return mapping[x]
 
     relevant_dfta = dfta.map_states(get_name)
+    n = 0
 
     # TO COUNT TREES YOU NEED TO RE ADD OTHER VARIABLES
     if keep_type_req:
+        added = set()
         for i, j in var_merge.items():
             old = Variable(i)
             for (prog, _), dst in relevant_dfta.rules.copy().items():
                 if isinstance(prog, Variable) and prog.no == j:
                     relevant_dfta.rules[(old, ())] = dst
+                    added.add((old, ()))
 
         relevant_dfta.refresh_reversed_rules()
+        n = relevant_dfta.trees_at_size(max_size)
         print(
             "memory:",
             total_programs,
             "dfta:",
-            relevant_dfta.trees_at_size(max_size),
+            n,
         )
+        for x in added:
+            del relevant_dfta.rules[x]
+        relevant_dfta.refresh_reversed_rules()
 
         # test(memory, relevant_dfta, max_size)
-    return relevant_dfta
+    return relevant_dfta, n
 
 
 def test(memory, dfta, max_size):

@@ -90,12 +90,11 @@ def find_regular_constraints(
     pbar.set_postfix_str(f"{len(constraints)}")
     pbar.update()
     pbar.close()
-    reduced_grammar = grammar_from_memory(
+    reduced_grammar, t = grammar_from_memory(
         dsl, enumerator.memory, type_req, grammar.finals, True
     )
     print("at size:", max_size)
     basen = base_grammar.trees_at_size(max_size)
-    t = reduced_grammar.trees_at_size(max_size)
     print(
         "\tmethod: ratio no pruning | ratio comm. pruned | ratio pruned",
     )
@@ -107,6 +106,4 @@ def find_regular_constraints(
         print(
             f"\t{n}: {v / basen:.2%} | {v / ntrees:.2%} | {v / t:.2%}",
         )
-    return grammar_from_memory(
-        dsl, enumerator.memory, type_req, grammar.finals, False
-    ), constraints
+    return reduced_grammar, constraints
