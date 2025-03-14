@@ -1,9 +1,7 @@
 from collections import defaultdict
-from itertools import combinations_with_replacement, product
 from typing import (
     Callable,
     Dict,
-    Generator,
     Generic,
     List,
     Literal,
@@ -14,6 +12,8 @@ from typing import (
     Union,
     overload,
 )
+
+from gpoe.partitions import integer_partitions
 
 U = TypeVar("U")
 V = TypeVar("V")
@@ -245,14 +245,6 @@ class DFTA(Generic[U, V]):
         Return the number of trees produced of all sizes until the given size (included).
         """
 
-        def __integer_partitions__(
-            k: int, n: int
-        ) -> Generator[Tuple[int, ...], None, None]:
-            choices = list(range(1, n - k + 2))
-            for elements in combinations_with_replacement(choices, k):
-                if sum(elements) == n:
-                    yield elements
-
         states = self.states
         count: dict[U, dict[int, int]] = {state: {} for state in states}
         for csize in range(1, size + 1):
@@ -263,7 +255,7 @@ class DFTA(Generic[U, V]):
                     if len(args) == 0 and csize == 1:
                         count[state][csize] += 1
                     elif len(args) > 0:
-                        for partition in __integer_partitions__(len(args), csize - 1):
+                        for partition in integer_partitions(len(args), csize - 1):
                             total = 1
                             for arg_size, arg in zip(partition, args):
                                 total *= count[arg][arg_size]

@@ -1,15 +1,9 @@
-from itertools import product, combinations_with_replacement
+from itertools import product
 from collections import defaultdict
 from typing import Any, Dict, Generator, List, Tuple
 from gpoe.program import Program, Function
 from gpoe.tree_automaton import DFTA
-
-
-def __integer_partitions__(k: int, n: int) -> Generator[Tuple[int, ...], None, None]:
-    choices = list(range(1, n - k + 2))
-    for elements in combinations_with_replacement(choices, k):
-        if sum(elements) == n:
-            yield elements
+from gpoe.partitions import integer_partitions
 
 
 class Enumerator:
@@ -44,7 +38,7 @@ class Enumerator:
         # Iterate over all combinations
         else:
             mem = []
-            for size_requests in __integer_partitions__(len(args), size):
+            for size_requests in integer_partitions(len(args), size):
                 possibles = [
                     self.memory[state][sub_size]
                     for state, sub_size in zip(args, size_requests)
