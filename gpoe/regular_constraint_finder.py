@@ -78,14 +78,6 @@ def find_regular_constraints(
                 pbar.update()
                 last_size = enumerator.current_size
                 pbar.set_postfix_str(f"{len(constraints)}")
-                # if enumerator.current_size > target_size:
-                #     new_grammar = grammar_from_memory(
-                #         dsl, enumerator.memory, type_req, grammar.finals, True
-                #     )
-                #     target_size += 2
-                #     pbar.set_postfix_str(
-                #         f"{new_grammar.trees_at_size(max_size) / ntrees:.2%}"
-                #     )
     except StopIteration:
         pass
     pbar.set_postfix_str(f"{len(constraints)}")
