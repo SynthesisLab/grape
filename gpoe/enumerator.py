@@ -15,7 +15,7 @@ def __integer_partitions__(k: int, n: int) -> Generator[Tuple[int, ...], None, N
 class Enumerator:
     def __init__(self, grammar: DFTA[Any, Program]):
         self.grammar = grammar
-        self.states = list(self.grammar.states)
+        self.states = sorted(self.grammar.states)
         self.__setup__()
 
     def __setup__(self) -> None:
