@@ -145,22 +145,46 @@ def grammar_from_memory(
     for p in prod_progs:
         progs_by_size[p.size()].append(p)
 
+    out_transitions = {}
+
+    def compute_out(state: str) -> int:
+        if state not in out_transitions:
+            n = 0
+            for (letter, args), dst in rules.items():
+                if any(arg == state for arg in args):
+                    n += compute_out(dst)
+            if n == 0:
+                n = 1
+            out_transitions[state] = n
+
+        return out_transitions[state]
+
     for state in tqdm(not_consumed, desc="extending automaton"):
+        # GABRIEL VERSION
+        # for (letter, args) in rev_rules[state]:
+        #     possibles = [[s for s in not_consumed_as_progs if arg.can_be_embed_into(s)] + [arg] for arg in args]
+        #     for new_args in product(*possibles):
+        #         rules_gab[(letter, tuple(map(str, new_args)))] = dst
+
         # We should merge their state with the state of the highest sketch match
+        # THEO VERSION
         p = Program.parse(state)
         merge_candidates = []
         size_of_canditates = 0
+        best = float("inf")
         for csize in reversed(range(1, p.size())):
             if csize < size_of_canditates:
                 break
             for prog in progs_by_size[csize]:
-                if prog != p and prog.can_be_embed_into(p):
+                if (
+                    prog != p
+                    and compute_out(str(prog)) < best
+                    and prog.can_be_embed_into(p)
+                ):
                     merge_candidates.append(prog)
-                    break
-        # TODO: improve by choosing most restrictive one
+                    best = compute_out(str(prog))
         target = merge_candidates.pop(0)
         state_collapse[state] = str(target)
-        # print("SOURCE:", state, "candidates:", merge_candidates)
 
     dfta = DFTA(rules, finals)
     dfta = dfta.map_states(lambda x: state_collapse.get(x, x))
