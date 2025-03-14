@@ -45,11 +45,12 @@ def find_regular_constraints(
     grammar = grammar_from_type_constraints_and_commutativity(
         dsl, type_req, [p[0] for p in approx_constraints]
     )
+    ntrees = sum(grammar.trees_by_size(max_size).values())
+    basen = sum(base_grammar.trees_by_size(max_size).values())
     print("at size:", max_size)
-    print("\tno pruning:", base_grammar.trees_at_size(max_size))
-    ntrees = grammar.trees_at_size(max_size)
+    print("\tno pruning:", basen)
     print("\tcommutativity pruned:", ntrees)
-    assert base_grammar.trees_at_size(max_size) >= grammar.trees_at_size(max_size)
+    assert basen >= ntrees
     enumerator = Enumerator(grammar)
     # Generate all programs until some size
     pbar = tqdm(total=max_size + 1)
@@ -94,7 +95,6 @@ def find_regular_constraints(
         dsl, enumerator.memory, type_req, grammar.finals, True
     )
     print("at size:", max_size)
-    basen = base_grammar.trees_at_size(max_size)
     print(
         "\tmethod: ratio no pruning | ratio comm. pruned | ratio pruned",
     )

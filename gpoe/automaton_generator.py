@@ -114,7 +114,9 @@ def grammar_from_memory(
             type2var[t] = i
             var_merge[i] = i
     # Produce rules incrementally
-    total_programs = sum(len(memory[state][max_size]) for state in memory)
+    total_programs = sum(
+        sum(len(memory[state][s]) for state in memory) for s in range(1, max_size + 1)
+    )
     finals: set[str] = set()
     prod_states: set[str] = set()
     for size in range(1, max_size + 1):
@@ -211,7 +213,7 @@ def grammar_from_memory(
                     added.add((old, ()))
 
         relevant_dfta.refresh_reversed_rules()
-        n = relevant_dfta.trees_at_size(max_size)
+        n = sum(relevant_dfta.trees_by_size(max_size).values())
         print(
             "memory:",
             total_programs,
