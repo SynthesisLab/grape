@@ -113,5 +113,6 @@ def __find_commutativity__(
                 continue
             variant = Function(Primitive(prim), new_args)
             if evaluator.eval(variant, stype) is not None:
+                print("\tprimitive:", prim, "is commutative")
                 constraints += __add_commutative_constraints__(dsl, prim, new_args)
     return constraints
