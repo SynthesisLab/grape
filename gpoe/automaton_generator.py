@@ -118,7 +118,7 @@ def grammar_from_memory(
     finals: set[str] = set()
     prod_states: set[str] = set()
     for size in range(1, max_size + 1):
-        for state in memory:
+        for state in sorted(memory):
             programs = memory[state][size]
             for x in programs:
                 x = __fix_vars__(x, var_merge)
@@ -134,13 +134,13 @@ def grammar_from_memory(
     # "Collapse" it to generate infinite size
     # 1. find all states which are not consumed
     not_consumed: set[str] = set()
-    for state in prod_states:
+    for state in sorted(prod_states):
         if all(state not in consumed for _, consumed in rules.keys()):
             not_consumed.add(state)
     # 2. Say that all not consumed must be consumed at some point
     # Assume they must be from some function
     state_collapse = {}
-    prod_progs = {Program.parse(other) for other in prod_states}
+    prod_progs = [Program.parse(other) for other in sorted(prod_states)]
     progs_by_size: dict[int, list[Program]] = {size: [] for size in range(max_size + 1)}
     for p in prod_progs:
         progs_by_size[p.size()].append(p)
