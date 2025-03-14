@@ -128,148 +128,6 @@ class DFTA(Generic[U, V]):
         self.__remove_unproductive__()
         self.refresh_reversed_rules()
 
-    def read_product(self, other: "DFTA[W, V]") -> "DFTA[Tuple[U, W], V]":
-        """
-        Read self and other.
-        """
-        rules: Dict[
-            Tuple[
-                V,
-                Tuple[Tuple[U, W], ...],
-            ],
-            Tuple[U, W],
-        ] = {}
-        # Update rules
-        for (l1, args1), dst1 in self.rules.items():
-            for (l2, args2), dst2 in other.rules.items():
-                if len(args1) != len(args2) or l1 != l2:
-                    continue
-                S = (l1, tuple((a, b) for a, b in zip(args1, args2)))
-                rules[S] = (dst1, dst2)
-        # Update final states
-        finals = set()
-        for dst1 in self.finals:
-            for dst2 in other.finals:
-                finals.add((dst1, dst2))
-        out = DFTA(rules, finals)
-        return out
-
-    def read_union(
-        self,
-        other: "DFTA[W, V]",
-        fusion: Callable[[Optional[U], Optional[W]], X] = lambda x, y: (x, y),  # type: ignore
-    ) -> "DFTA[X, V]":
-        """
-        Read self or other.
-        """
-        rules: Dict[
-            Tuple[
-                V,
-                Tuple[X, ...],
-            ],
-            X,
-        ] = {}
-        # Update rules
-        mapping_s = defaultdict(list)
-        mapping_o = defaultdict(list)
-        # Compute all alternatives
-        finals = set()
-        ostates = other.states
-        for a in self.states:
-            for b in ostates:
-                f = fusion(a, b)
-                mapping_o[b].append(f)
-                mapping_s[a].append(f)
-            mapping_s[a].append(fusion(a, None))
-            if a in self.finals:
-                finals |= set(mapping_s[a])
-        for b in ostates:
-            mapping_o[b].append(fusion(None, b))
-            if b in other.finals:
-                finals |= set(mapping_o[b])
-
-        for (l1, args1), dst1 in self.rules.items():
-            cases = [mapping_s[x] for x in args1]
-            new_dst = fusion(dst1, None)
-            for new_args in product(*cases):
-                rules[(l1, new_args)] = new_dst
-
-        for (l2, args2), dst2 in other.rules.items():
-            cases = [mapping_o[x] for x in args2]
-            new_dst = fusion(None, dst2)
-            for new_args in product(*cases):
-                rules[(l2, new_args)] = new_dst
-        for (l1, args1), dst1 in self.rules.items():
-            for (l2, args2), dst2 in other.rules.items():
-                if len(args1) != len(args2) or l1 != l2:
-                    continue
-                S = (l1, tuple(fusion(a, b) for a, b in zip(args1, args2)))
-                rules[S] = fusion(dst1, dst2)
-
-        out = DFTA(rules, finals)
-        out.reduce()
-        return out
-
-    def determinize(self) -> "DFTA[tuple[U, ...], V]":
-        """
-
-        Adapated from TATA p26.
-        """
-        rules = {}
-
-        has_added = True
-        states = []
-        while has_added:
-            has_added = False
-            for (letter, args), q in self.rules.items():
-                if len(args) == 0:
-                    key = (letter, tuple())
-                    if key in rules:
-                        has_added = q in rules[key]
-                        rules[key].add(q)
-                    else:
-                        rules[key] = {q}
-                        states.append(rules[key])
-                        has_added = True
-
-                else:
-                    possibles = [[s for s in states if qi in s] for qi in args]
-                    if any(len(x) == 0 for x in possibles):
-                        continue
-                    for combination in product(*possibles):
-                        key = (letter, combination)
-                        if key in rules:
-                            has_added = q in rules[key]
-                            rules[key].add(q)
-                        else:
-                            rules[key] = {q}
-                            states.append(rules[key])
-                            has_added = True
-
-        new_finals = set()
-        for (letter, sargs), s in rules.items():
-            if s not in new_finals and any(q in s for q in self.finals):
-                new_finals.add(s)
-            for s in sargs:
-                if s not in new_finals and any(q in s for q in self.finals):
-                    new_finals.add(s)
-
-        return DFTA(
-            {
-                (letter, tuple(tuple(s) for s in derivation)): tuple(v)
-                for (letter, derivation), v in rules.items()
-            },
-            {tuple(s) for s in new_finals},
-        )
-
-    def complement(self) -> "DFTA[tuple[U, ...], V]":
-        det = self.determinize()
-        new_finals = set()
-        for state in det.states:
-            if state not in det.finals:
-                new_finals.add(state)
-        return DFTA({k: v for k, v in det.rules.items()}, new_finals)
-
     @overload
     def minimise(self, mapping: Callable[[Tuple[U, ...]], W]) -> "DFTA[W, V]":
         pass
@@ -382,9 +240,9 @@ class DFTA(Generic[U, V]):
             set(map(mapping, self.finals)),
         )
 
-    def trees_at_size(self, size: int) -> int:
+    def trees_by_size(self, size: int) -> dict[int, int]:
         """
-        Return the number of trees produced of the given size.
+        Return the number of trees produced of all sizes until the given size (included).
         """
 
         def __integer_partitions__(
@@ -410,8 +268,16 @@ class DFTA(Generic[U, V]):
                             for arg_size, arg in zip(partition, args):
                                 total *= count[arg][arg_size]
                             count[state][csize] += total
+        return {
+            targets: sum(count[state][targets] for state in self.finals)
+            for targets in range(1, size + 1)
+        }
 
-        return sum(count[state][size] for state in self.finals)
+    def trees_at_size(self, size: int) -> int:
+        """
+        Return the number of trees produced of the given size.
+        """
+        return self.trees_by_size(size)[size]
 
     def __repr__(self) -> str:
         s = "finals:" + ",".join(sorted(map(str, self.finals))) + "\n"
