@@ -35,7 +35,13 @@ def load_file(
     space = import_file_function(
         file_path[:-3], ["dsl", "sample_dict", "equal_dict", "target_type"]
     )()
-    return space.dsl, space.target_type, space.sample_dict, space.equal_dict
+
+    return (
+        {k: v for k, v in sorted(space.dsl.items())},
+        space.target_type,
+        space.sample_dict,
+        space.equal_dict,
+    )
 
 
 def parse_args():
