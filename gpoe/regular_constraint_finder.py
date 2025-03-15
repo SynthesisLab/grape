@@ -13,18 +13,20 @@ import gpoe.types as types
 from tqdm import tqdm
 
 
-def __infer_mega_type_req__(dsl: dict[str, tuple[str, callable]], rtype: str) -> str:
+def __infer_mega_type_req__(
+    dsl: dict[str, tuple[str, callable]], rtype: str, max_size: int
+) -> str:
     # Capture max number of args of type that each type request needs
-    use_all = defaultdict(int)
+    max_arity_per_type = defaultdict(int)
     for str_type, _ in dsl.values():
         args = types.arguments(str_type)
-        for t in args:
-            n = sum(t == a for a in args)
-            use_all[t] = max(use_all[t], n)
+        for arg in args:
+            max_arity_per_type[arg] = max(max_arity_per_type[arg], len(args))
     # Produce the number of args
     univ_type_req = []
-    for t, n in use_all.items():
-        univ_type_req += [t] * n
+    for t, n in max_arity_per_type.items():
+        j = int(max_size / 2 * (n - 1) + 1)
+        univ_type_req += [t] * j
 
     type_req = "->".join(univ_type_req + [rtype])
     return type_req
@@ -39,7 +41,7 @@ def find_regular_constraints(
 ) -> tuple[DFTA[str, Program], list[tuple[Program, Program, str]]]:
     constraints = []
     # Find all type requests
-    type_req = __infer_mega_type_req__(dsl, rtype)
+    type_req = __infer_mega_type_req__(dsl, rtype, max_size)
 
     base_grammar = grammar_from_type_constraints(dsl, type_req)
     grammar = grammar_from_type_constraints_and_commutativity(
