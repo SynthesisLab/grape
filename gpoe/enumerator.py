@@ -13,9 +13,14 @@ class Enumerator:
         self.__setup__()
 
     def __setup__(self) -> None:
+        self.vars_memory: Dict[Program, dict[str, tuple[int, int]]] = {}
+        self.var_types = {
+            state
+            for state, derivations in self.grammar.reversed_rules.items()
+            if any(isinstance(l, Variable) for l, _ in derivations)
+        }
         # Memorize State -> Size -> Programs
         self.memory: Dict[Any, Dict[int, List[Program]]] = {}
-        self.vars_memory: Dict[Program, dict[str, tuple[int, int]]] = {}
         for state in self.states:
             self.memory[state] = defaultdict(list)
         # Memorize (State, State, ...) -> Size -> (Program, Program, ...)
@@ -50,18 +55,23 @@ class Enumerator:
                     # Filter programs where variables are not in increasing order
                     vars_per_type = defaultdict(lambda: (-1, -1))
                     skip = False
-                    for el, arg in zip(combination, args):
-                        min_var, max_var = self.vars_memory[el].get(arg, (-1, -1))
-                        if min_var < 0 or min_var > vars_per_type[arg][0]:
-                            new_min = (
-                                min_var
-                                if vars_per_type[arg][0] < 0
-                                else vars_per_type[arg][0]
-                            )
-                            vars_per_type[arg] = (new_min, max_var)
-                        else:
-                            skip = True
+                    for el in combination:
+                        if skip:
                             break
+                        for var_type in self.var_types:
+                            min_var, max_var = self.vars_memory[el].get(
+                                var_type, (-1, -1)
+                            )
+                            prev_min, prev_max = vars_per_type[var_type]
+                            if min_var < 0 or min_var > prev_max:
+                                new_min = min_var if prev_min < 0 else prev_min
+                                vars_per_type[var_type] = (
+                                    new_min,
+                                    max(max_var, prev_max),
+                                )
+                            else:
+                                skip = True
+                                break
                     if skip:
                         continue
                     yield (combination, vars_per_type)
