@@ -1,7 +1,7 @@
 from itertools import product
 from collections import defaultdict
 from typing import Any, Dict, Generator, List, Tuple
-from gpoe.program import Program, Function
+from gpoe.program import Program, Function, Variable
 from gpoe.tree_automaton import DFTA
 from gpoe.partitions import integer_partitions
 
@@ -15,6 +15,7 @@ class Enumerator:
     def __setup__(self) -> None:
         # Memorize State -> Size -> Programs
         self.memory: Dict[Any, Dict[int, List[Program]]] = {}
+        self.vars_memory: Dict[Program, dict[str, tuple[int, int]]] = {}
         for state in self.states:
             self.memory[state] = defaultdict(list)
         # Memorize (State, State, ...) -> Size -> (Program, Program, ...)
@@ -30,7 +31,7 @@ class Enumerator:
 
     def __query_combinations__(
         self, args: Tuple[Any, ...], size: int
-    ) -> Generator[Tuple[Program, ...], None, None]:
+    ) -> Generator[tuple[Tuple[Program, ...], dict[str, tuple[int, int]]], None, None]:
         # Use cache if available
         if size in self.memory_combinations[args]:
             for el in self.memory_combinations[args][size]:
@@ -46,8 +47,25 @@ class Enumerator:
                 if any(len(x) == 0 for x in possibles):
                     continue
                 for combination in product(*possibles):
-                    yield combination
-                    mem.append(combination)
+                    # Filter programs where variables are not in increasing order
+                    vars_per_type = defaultdict(lambda: (-1, -1))
+                    skip = False
+                    for el, arg in zip(combination, args):
+                        min_var, max_var = self.vars_memory[el].get(arg, (-1, -1))
+                        if min_var < 0 or min_var > vars_per_type[arg][0]:
+                            new_min = (
+                                min_var
+                                if vars_per_type[arg][0] < 0
+                                else vars_per_type[arg][0]
+                            )
+                            vars_per_type[arg] = (new_min, max_var)
+                        else:
+                            skip = True
+                            break
+                    if skip:
+                        continue
+                    yield (combination, vars_per_type)
+                    mem.append((combination, vars_per_type))
             self.memory_combinations[args][size] = mem
 
     def enumerate_until_size(self, size: int) -> Generator[Program, bool, None]:
@@ -68,12 +86,18 @@ class Enumerator:
                                 should_keep = yield letter
                             if should_keep:
                                 self.memory[state][1].append(letter)
+                                if isinstance(letter, Variable):
+                                    self.vars_memory[letter] = {
+                                        state: (letter.no, letter.no)
+                                    }
+                                else:
+                                    self.vars_memory[letter] = {}
             else:
                 for state in self.states:
                     for derivation in self.grammar.reversed_rules[state]:
                         letter, args = derivation
                         if len(args) > 0:
-                            for combination in self.__query_combinations__(
+                            for combination, vars in self.__query_combinations__(
                                 args, self.current_size - 1
                             ):
                                 program = Function(letter, list(combination))
@@ -83,7 +107,9 @@ class Enumerator:
                                         self.memory[state][self.current_size].append(
                                             program
                                         )
+                                        self.vars_memory[program] = vars
                                 else:
                                     self.memory[state][self.current_size].append(
                                         program
                                     )
+                                    self.vars_memory[program] = vars
