@@ -64,16 +64,10 @@ def find_regular_constraints(
         last_size = 1
         while True:
             program = gen.send(should_keep)
-            same_used, var_used = program.same_var_used_more_than_once()
-            if same_used:
-                should_keep = False
-            # elif 0 not in var_used or len(var_used) != nargs:
-            # should_keep = True
-            else:
-                representative = evaluator.eval(program, type_req)
-                should_keep = representative is None
-                if not should_keep:
-                    constraints.append((program, representative, type_req))
+            representative = evaluator.eval(program, type_req)
+            should_keep = representative is None
+            if not should_keep:
+                constraints.append((program, representative, type_req))
             if last_size < enumerator.current_size:
                 pbar.update()
                 last_size = enumerator.current_size
