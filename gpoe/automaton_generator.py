@@ -199,7 +199,7 @@ def grammar_from_memory(
             mapping[x] = f"S{len(mapping)}"
         return mapping[x]
 
-    relevant_dfta = dfta.map_states(get_name)
+    relevant_dfta = dfta.minimise().map_states(get_name)
     n = 0
 
     # TO COUNT TREES YOU NEED TO RE ADD OTHER VARIABLES
