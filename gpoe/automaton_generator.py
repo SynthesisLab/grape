@@ -237,10 +237,15 @@ def test(
 ) -> int:
     enum = Enumerator(dfta)
     gen = enum.enumerate_until_size(max_size + 1)
+    pbar = tqdm(total=max_size, desc="checking")
     next(gen)
+    size = 0
     while True:
         try:
             gen.send(True)
+            if enum.current_size > size:
+                size += 1
+                pbar.update()
         except StopIteration:
             break
 
