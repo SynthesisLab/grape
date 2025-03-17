@@ -122,14 +122,16 @@ def grammar_from_memory(
     for size in range(1, max_size + 1):
         for state in sorted(memory):
             programs = memory[state][size]
-            for x in programs:
-                x = __fix_vars__(x, var_merge)
-                dst = str(x)
+            fixed = {__fix_vars__(prog, var_merge) for prog in programs}
+            for prog in fixed:
+                dst = str(prog)
                 prod_states.add(dst)
-                if isinstance(x, Function):
-                    rules[(x.function, tuple(map(str, x.arguments)))] = dst
+                if isinstance(prog, Function):
+                    key = (prog.function, tuple(map(str, prog.arguments)))
                 else:
-                    rules[(x, ())] = dst
+                    key = (prog, ())
+                assert key not in rules
+                rules[key] = dst
                 if state in prev_finals:
                     finals.add(dst)
 
