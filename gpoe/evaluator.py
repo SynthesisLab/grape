@@ -21,7 +21,10 @@ class Evaluator:
     def __gen_full_inputs__(self, type_req: str) -> None:
         if type_req not in self.full_inputs:
             args = types.arguments(type_req)
-            possibles = [self.base_inputs[arg] for arg in args]
+            possibles = [
+                self.base_inputs[arg][i:-i] + self.base_inputs[arg][-i:]
+                for i, arg in enumerate(args)
+            ]
             elems = []
             for full_input in product(*possibles):
                 elems.append(full_input)
