@@ -85,6 +85,19 @@ def __add_commutative_constraints__(
             equiv_to.arguments[swapped_indices[0]] = second_arg
             equiv_to.arguments[swapped_indices[1]] = first_arg
             constraints.append((deleted, equiv_to, "->".join(type_req2)))
+        # Add additional constraint for variable type
+        type_req2 = type_req1 + (swapped_type,) + (rtype,)
+
+        second_arg = Variable(swapped_indices[0])
+        # Valid pair that we have to forbid
+        deleted = Function(Primitive(primitive), [Variable(i) for i in range(nargs)])
+        deleted.arguments[swapped_indices[0]] = first_arg
+        deleted.arguments[swapped_indices[1]] = second_arg
+        equiv_to = Function(Primitive(primitive), [Variable(i) for i in range(nargs)])
+        equiv_to.arguments[swapped_indices[0]] = second_arg
+        equiv_to.arguments[swapped_indices[1]] = first_arg
+        constraints.append((deleted, equiv_to, "->".join(type_req2)))
+
     return constraints
 
 
