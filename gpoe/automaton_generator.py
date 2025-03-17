@@ -220,22 +220,21 @@ def grammar_from_memory(
 
         relevant_dfta.refresh_reversed_rules()
         n = sum(relevant_dfta.trees_by_size(max_size).values())
+        from_enum = test(memory, relevant_dfta, max_size)
         print(
-            "memory:",
-            total_programs,
-            "dfta:",
-            n,
+            f"obs. equivalence: {total_programs:.3e} pruned: {from_enum:.3e} ({from_enum / total_programs:.2%})"
         )
         # Delete them now that they have been used
         for x in added:
             del relevant_dfta.rules[x]
         relevant_dfta.refresh_reversed_rules()
 
-        # test(memory, relevant_dfta, max_size)
     return relevant_dfta, n
 
 
-def test(memory, dfta, max_size):
+def test(
+    memory: dict[Any, dict[int, list[Program]]], dfta: DFTA[Any, Program], max_size: int
+) -> int:
     enum = Enumerator(dfta)
     gen = enum.enumerate_until_size(max_size + 1)
     next(gen)
@@ -253,8 +252,7 @@ def test(memory, dfta, max_size):
             if size not in new_memory_to_size:
                 new_memory_to_size[size] = []
             new_memory_to_size[size] += programs
-            if size == max_size:
-                total += len(programs)
+            total += len(programs)
     for value in memory.values():
         for size, programs in value.items():
             if size not in old_memory_to_size:
@@ -262,17 +260,17 @@ def test(memory, dfta, max_size):
             old_memory_to_size[size] += programs
 
     sizes = set(new_memory_to_size.keys()) | set(old_memory_to_size.keys())
-    print("from enumeration:", total)
     for size in sizes:
         if size not in new_memory_to_size:
             assert False
         elif size not in old_memory_to_size:
             pass
-        # print("+", new_memory_to_size[size])
+            # print("+", new_memory_to_size[size])
         else:
             # more = set(new_memory_to_size[size]) - set(old_memory_to_size[size])
             less = set(old_memory_to_size[size]) - set(new_memory_to_size[size])
             # if more:
-            # print("+", more)
+            #     print("+", more)
             if less:
                 assert False
+    return total
