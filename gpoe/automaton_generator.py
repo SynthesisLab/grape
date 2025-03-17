@@ -95,11 +95,10 @@ def __fix_vars__(program: Program, var_merge: dict[int, int]) -> Program:
 
 
 def grammar_from_memory(
-    dsl: dict[str, tuple[str, callable]],
     memory: dict[Any, dict[int, list[Program]]],
     type_req: str,
     prev_finals: set[str],
-    keep_type_req: bool,
+    optimize: bool = False,
 ) -> tuple[DFTA[str, Program], int]:
     rules: dict[tuple[Program, tuple[str, ...]], str] = {}
     max_size = max(max(memory[state].keys()) for state in memory)
@@ -118,14 +117,14 @@ def grammar_from_memory(
         sum(len(memory[state][s]) for state in memory) for s in range(1, max_size + 1)
     )
     finals: set[str] = set()
-    prod_states: set[str] = set()
+    prod_states: set[tuple[str, int]] = set()
     for size in range(1, max_size + 1):
         for state in sorted(memory):
             programs = memory[state][size]
             fixed = {__fix_vars__(prog, var_merge) for prog in programs}
             for prog in fixed:
                 dst = str(prog)
-                prod_states.add(dst)
+                prod_states.add((dst, size))
                 if isinstance(prog, Function):
                     key = (prog.function, tuple(map(str, prog.arguments)))
                 else:
@@ -138,16 +137,15 @@ def grammar_from_memory(
     # "Collapse" it to generate infinite size
     # 1. find all states which are not consumed
     not_consumed: set[str] = set()
-    for state in sorted(prod_states):
+    for state, _ in sorted(prod_states):
         if all(state not in consumed for _, consumed in rules.keys()):
             not_consumed.add(state)
     # 2. Say that all not consumed must be consumed at some point
     # Assume they must be from some function
     state_collapse = {}
-    prod_progs = [Program.parse(other) for other in sorted(prod_states)]
     progs_by_size: dict[int, list[Program]] = {size: [] for size in range(max_size + 1)}
-    for p in prod_progs:
-        progs_by_size[p.size()].append(p)
+    for state, size in prod_states:
+        progs_by_size[size].append(Program.parse(state))
 
     out_transitions = {}
 
@@ -164,14 +162,7 @@ def grammar_from_memory(
         return out_transitions[state]
 
     for state in tqdm(not_consumed, desc="extending automaton"):
-        # GABRIEL VERSION
-        # for (letter, args) in rev_rules[state]:
-        #     possibles = [[s for s in not_consumed_as_progs if arg.can_be_embed_into(s)] + [arg] for arg in args]
-        #     for new_args in product(*possibles):
-        #         rules_gab[(letter, tuple(map(str, new_args)))] = dst
-
         # We should merge their state with the state of the highest sketch match
-        # THEO VERSION
         p = Program.parse(state)
         merge_candidates = []
         size_of_canditates = 0
@@ -182,11 +173,12 @@ def grammar_from_memory(
             for prog in progs_by_size[csize]:
                 if (
                     prog != p
-                    and compute_out(str(prog)) < best
+                    and (not optimize or compute_out(str(prog)) < best)
                     and prog.can_be_embed_into(p)
                 ):
                     merge_candidates.append(prog)
-                    best = compute_out(str(prog))
+                    best = (not optimize) or compute_out(str(prog))
+                    break
         target = merge_candidates.pop(0)
         state_collapse[state] = str(target)
 
@@ -204,30 +196,28 @@ def grammar_from_memory(
     relevant_dfta = dfta.minimise().map_states(get_name)
     n = 0
 
-    if keep_type_req:
-        # Reproduce original type request to compare number of programs
-        # add a rule for each deleted variable
-        added = set()
-        for i, j in var_merge.items():
-            if i == j:
-                continue
-            # data: variable i is renamed as variable j
-            old = Variable(i)
-            for (prog, _), dst in relevant_dfta.rules.copy().items():
-                if isinstance(prog, Variable) and prog.no == j:
-                    relevant_dfta.rules[(old, ())] = dst
-                    added.add((old, ()))
-
-        relevant_dfta.refresh_reversed_rules()
-        n = sum(relevant_dfta.trees_by_size(max_size).values())
-        from_enum = test(memory, relevant_dfta, max_size)
-        print(
-            f"obs. equivalence: {total_programs:.3e} pruned: {from_enum:.3e} ({from_enum / total_programs:.2%})"
-        )
-        # Delete them now that they have been used
-        for x in added:
-            del relevant_dfta.rules[x]
-        relevant_dfta.refresh_reversed_rules()
+    # Reproduce original type request to compare number of programs
+    # add a rule for each deleted variable
+    added = set()
+    for i, j in var_merge.items():
+        if i == j:
+            continue
+        # data: variable i is renamed as variable j
+        old = Variable(i)
+        for (prog, _), dst in relevant_dfta.rules.copy().items():
+            if isinstance(prog, Variable) and prog.no == j:
+                relevant_dfta.rules[(old, ())] = dst
+                added.add((old, ()))
+    relevant_dfta.refresh_reversed_rules()
+    n = sum(relevant_dfta.trees_by_size(max_size).values())
+    from_enum = test(memory, relevant_dfta, max_size)
+    print(
+        f"obs. equivalence: {total_programs:.3e} pruned: {from_enum:.3e} ({from_enum / total_programs:.2%})"
+    )
+    # Delete them now that they have been used
+    for x in added:
+        del relevant_dfta.rules[x]
+    relevant_dfta.refresh_reversed_rules()
 
     return relevant_dfta, n
 

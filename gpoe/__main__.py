@@ -79,6 +79,11 @@ def parse_args():
         default="./constraints.csv",
         help="output file containing the equivalent programs",
     )
+    parser.add_argument(
+        "--optimize",
+        action="store_true",
+        help="try to further reduce the number of programs. this is very slow and on average offers no or small gains",
+    )
 
     return parser.parse_args()
 
@@ -90,7 +95,7 @@ def main():
     evaluator = Evaluator(dsl, inputs, equal_dict)
     approx_constraints = find_approximate_constraints(dsl, evaluator)
     grammar, regular_constraints = find_regular_constraints(
-        dsl, evaluator, args.size, target_type, approx_constraints
+        dsl, evaluator, args.size, target_type, approx_constraints, args.optimize
     )
     with open(args.constraints, "w") as fd:
         fd.write("deleted,equivalent_to,type_request\n")
