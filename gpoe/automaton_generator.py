@@ -202,10 +202,14 @@ def grammar_from_memory(
     relevant_dfta = dfta.minimise().map_states(get_name)
     n = 0
 
-    # TO COUNT TREES YOU NEED TO RE ADD OTHER VARIABLES
     if keep_type_req:
+        # Reproduce original type request to compare number of programs
+        # add a rule for each deleted variable
         added = set()
         for i, j in var_merge.items():
+            if i == j:
+                continue
+            # data: variable i is renamed as variable j
             old = Variable(i)
             for (prog, _), dst in relevant_dfta.rules.copy().items():
                 if isinstance(prog, Variable) and prog.no == j:
@@ -220,6 +224,7 @@ def grammar_from_memory(
             "dfta:",
             n,
         )
+        # Delete them now that they have been used
         for x in added:
             del relevant_dfta.rules[x]
         relevant_dfta.refresh_reversed_rules()
