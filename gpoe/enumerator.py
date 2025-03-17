@@ -83,7 +83,7 @@ class Enumerator:
         Enumerate all programs until programs reach target size (excluded).
         """
 
-        while self.current_size < size:
+        while self.current_size + 1 < size:
             self.current_size += 1
             # Special case: size==1
             if self.current_size == 1:
