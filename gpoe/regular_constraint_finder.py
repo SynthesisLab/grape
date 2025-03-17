@@ -50,12 +50,12 @@ def find_regular_constraints(
     ntrees = sum(grammar.trees_by_size(max_size).values())
     basen = sum(base_grammar.trees_by_size(max_size).values())
     print("at size:", max_size)
-    print("\tno pruning:", basen)
-    print("\tcommutativity pruned:", ntrees)
+    print(f"\tno pruning: {basen:.2e}")
+    print(f"\tcommutativity pruned: {ntrees:.2e} ({ntrees / basen:.2%})")
     assert basen >= ntrees
     enumerator = Enumerator(grammar)
     # Generate all programs until some size
-    pbar = tqdm(total=max_size + 1)
+    pbar = tqdm(total=max_size)
     # target_size = max(len(types.arguments(t)) for t, _ in dsl.values()) + 1
     pbar.set_description_str("regular constraints")
     gen = enumerator.enumerate_until_size(max_size + 1)
