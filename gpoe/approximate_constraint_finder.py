@@ -106,6 +106,7 @@ def __find_commutativity__(
     evaluator: Evaluator,
 ) -> list[tuple[Program, Program, str]]:
     constraints = []
+    commutatives = []
     for prim, (stype, _) in dsl.items():
         args = types.arguments(stype)
         if len(args) < 2:
@@ -126,6 +127,8 @@ def __find_commutativity__(
                 continue
             variant = Function(Primitive(prim), new_args)
             if evaluator.eval(variant, stype) is not None:
-                print("\tprimitive:", prim, "is commutative")
+                commutatives.append(prim)
                 constraints += __add_commutative_constraints__(dsl, prim, new_args)
+    if commutatives:
+        print("commutatives:", ", ".join(commutatives))
     return constraints
