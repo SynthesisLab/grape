@@ -100,7 +100,6 @@ def grammar_from_memory(
     prev_finals: set[str],
     optimize: bool = False,
 ) -> tuple[DFTA[str, Program], int]:
-    rules: dict[tuple[Program, tuple[str, ...]], str] = {}
     max_size = max(max(memory[state].keys()) for state in memory)
     args_type = types.arguments(type_req)
     # Compute variable merging: all variables of same type should be merged
@@ -113,20 +112,20 @@ def grammar_from_memory(
             type2var[t] = i
             var_merge[i] = i
     # Produce rules incrementally
-    total_programs = sum(
-        sum(len(memory[state][s]) for state in memory) for s in range(1, max_size + 1)
-    )
+    rules: dict[tuple[Program, tuple[str, ...]], str] = {}
     finals: set[str] = set()
-    prod_states: set[tuple[str, int]] = set()
-    for size in range(1, max_size + 1):
+    prod_programs: dict[int, set[Program]] = defaultdict(set)
+    consumed: set[Program] = set()
+    for size in tqdm(range(1, max_size + 1), desc="building automaton"):
         for state in sorted(memory):
             programs = memory[state][size]
             fixed = {__fix_vars__(prog, var_merge) for prog in programs}
             for prog in fixed:
                 dst = str(prog)
-                prod_states.add((dst, size))
+                prod_programs[size].add(prog)
                 if isinstance(prog, Function):
                     key = (prog.function, tuple(map(str, prog.arguments)))
+                    consumed.update(prog.arguments)
                 else:
                     key = (prog, ())
                 assert key not in rules
@@ -136,17 +135,17 @@ def grammar_from_memory(
 
     # "Collapse" it to generate infinite size
     # 1. find all states which are not consumed
-    not_consumed: set[str] = set()
-    for state, _ in sorted(prod_states):
-        if all(state not in consumed for _, consumed in rules.keys()):
-            not_consumed.add(state)
+    not_consumed: set[Program] = set()
+    for progs in sorted(prod_programs.values()):
+        for prog in progs:
+            if prog not in consumed:
+                not_consumed.add(prog)
     # 2. Say that all not consumed must be consumed at some point
     # Assume they must be from some function
     state_collapse = {}
-    progs_by_size: dict[int, list[Program]] = {size: [] for size in range(max_size + 1)}
-    for state, size in prod_states:
-        progs_by_size[size].append(Program.parse(state))
 
+    # Used for optimize=True Flag
+    # Compute the number of out derivations from given state
     out_transitions = {}
 
     def compute_out(state: str) -> int:
@@ -161,16 +160,15 @@ def grammar_from_memory(
 
         return out_transitions[state]
 
-    for state in tqdm(not_consumed, desc="extending automaton"):
+    for p in tqdm(not_consumed, desc="extending automaton"):
         # We should merge their state with the state of the highest sketch match
-        p = Program.parse(state)
         merge_candidates = []
         size_of_canditates = 0
         best = float("inf")
         for csize in reversed(range(1, p.size())):
             if csize < size_of_canditates:
                 break
-            for prog in progs_by_size[csize]:
+            for prog in prod_programs[csize]:
                 if (
                     prog != p
                     and (not optimize or compute_out(str(prog)) < best)
@@ -180,9 +178,10 @@ def grammar_from_memory(
                     best = (not optimize) or compute_out(str(prog))
                     break
         target = merge_candidates.pop(0)
-        state_collapse[state] = str(target)
+        state_collapse[str(p)] = str(target)
 
     dfta = DFTA(rules, finals)
+    dfta.reduce()
     dfta = dfta.map_states(lambda x: state_collapse.get(x, x))
     dfta.reduce()
     # Note: it is useless to minimise the automaton is already minimal
@@ -194,6 +193,8 @@ def grammar_from_memory(
         return mapping[x]
 
     relevant_dfta = dfta.minimise().map_states(get_name)
+    # free memory
+    del dfta
     n = 0
 
     # Reproduce original type request to compare number of programs
@@ -211,6 +212,9 @@ def grammar_from_memory(
     relevant_dfta.refresh_reversed_rules()
     n = sum(relevant_dfta.trees_by_size(max_size).values())
     from_enum = test(memory, relevant_dfta, max_size)
+    total_programs = sum(
+        sum(len(memory[state][s]) for state in memory) for s in range(1, max_size + 1)
+    )
     print(
         f"obs. equivalence: {total_programs:.3e} pruned: {from_enum:.3e} ({from_enum / total_programs:.2%})"
     )
