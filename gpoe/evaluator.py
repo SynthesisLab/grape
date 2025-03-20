@@ -18,6 +18,12 @@ class Evaluator:
         self.full_inputs_size = len(self.base_inputs[list(self.base_inputs.keys())[0]])
         self.full_inputs: dict[str, list] = {}
 
+    def free(self) -> None:
+        del self.dsl
+        del self.equiv_classes
+        del self.memoization
+        del self.full_inputs
+
     def __gen_full_inputs__(self, type_req: str) -> None:
         if type_req not in self.full_inputs:
             args = types.arguments(type_req)

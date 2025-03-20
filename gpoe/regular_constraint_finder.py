@@ -80,6 +80,7 @@ def find_regular_constraints(
     pbar.set_postfix_str(f"{len(constraints)}")
     pbar.update()
     pbar.close()
+    evaluator.free()
     reduced_grammar, t = grammar_from_memory(
         enumerator.memory, type_req, grammar.finals, optimize
     )
