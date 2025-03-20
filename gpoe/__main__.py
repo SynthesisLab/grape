@@ -74,10 +74,10 @@ def parse_args():
         help="output file containing the pruned grammar",
     )
     parser.add_argument(
-        "--constraints",
+        "--allowed",
         type=str,
-        default="./constraints.csv",
-        help="output file containing the equivalent programs",
+        default="./allowed.csv",
+        help="output file containing only semantically unique programs",
     )
     parser.add_argument(
         "--optimize",
@@ -94,15 +94,13 @@ def main():
     inputs = sample_inputs(args.samples, sample_dict, equal_dict)
     evaluator = Evaluator(dsl, inputs, equal_dict)
     approx_constraints = find_approximate_constraints(dsl, evaluator)
-    grammar, regular_constraints = find_regular_constraints(
+    grammar, allowed = find_regular_constraints(
         dsl, evaluator, args.size, target_type, approx_constraints, args.optimize
     )
-    with open(args.constraints, "w") as fd:
-        fd.write("deleted,equivalent_to,type_request\n")
-        for deleted, representative, type_req in (
-            approx_constraints + regular_constraints
-        ):
-            fd.write(f"{deleted},{representative},{type_req}\n")
+    with open(args.allowed, "w") as fd:
+        fd.write("program,type_request\n")
+        for program, type_req in allowed:
+            fd.write(f"{program},{type_req}\n")
 
     # Save DFTA
     with open(args.output, "w") as fd:

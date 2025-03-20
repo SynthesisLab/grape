@@ -40,7 +40,6 @@ def find_regular_constraints(
     approx_constraints: list[tuple[Program, Program, str]],
     optimize: bool = False,
 ) -> tuple[DFTA[str, Program], list[tuple[Program, Program, str]]]:
-    constraints = []
     # Find all type requests
     type_req = __infer_mega_type_req__(dsl, rtype, max_size)
 
@@ -57,8 +56,7 @@ def find_regular_constraints(
     enumerator = Enumerator(grammar)
     # Generate all programs until some size
     pbar = tqdm(total=max_size)
-    # target_size = max(len(types.arguments(t)) for t, _ in dsl.values()) + 1
-    pbar.set_description_str("regular constraints")
+    pbar.set_description_str("obs. equiv.")
     gen = enumerator.enumerate_until_size(max_size + 1)
     program = next(gen)
     evaluator.eval(program, type_req)
@@ -69,15 +67,11 @@ def find_regular_constraints(
             program = gen.send(should_keep)
             representative = evaluator.eval(program, type_req)
             should_keep = representative is None
-            if not should_keep:
-                constraints.append((program, representative, type_req))
             if last_size < enumerator.current_size:
                 pbar.update()
                 last_size = enumerator.current_size
-                pbar.set_postfix_str(f"{len(constraints)}")
     except StopIteration:
         pass
-    pbar.set_postfix_str(f"{len(constraints)}")
     pbar.update()
     pbar.close()
     evaluator.free()
@@ -96,4 +90,8 @@ def find_regular_constraints(
         print(
             f"\t{n}: {v / basen:.2%} | {v / ntrees:.2%} | {v / t:.2%}",
         )
-    return reduced_grammar, constraints
+    allowed = []
+    for dico in enumerator.memory.values():
+        for progs in dico.values():
+            allowed += [(p, type_req) for p in progs]
+    return reduced_grammar, allowed
