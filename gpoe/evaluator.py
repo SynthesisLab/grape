@@ -1,4 +1,5 @@
 from itertools import product
+import random
 from typing import Any, Optional, Tuple
 from gpoe.program import Function, Primitive, Program, Variable
 import gpoe.types as types
@@ -11,6 +12,7 @@ class Evaluator:
         inputs: dict[str, list],
         equal_dict: dict[str, callable],
         skip_exceptions: set,
+        seed: int = 1,
     ):
         self.dsl = dsl
         self.equiv_classes: dict[str, dict[Any, Program]] = {}
@@ -19,6 +21,7 @@ class Evaluator:
         self.full_inputs_size = len(self.base_inputs[list(self.base_inputs.keys())[0]])
         self.full_inputs: dict[str, list] = {}
         self.skip_exceptions = skip_exceptions
+        self.prng = random.Random(seed)
 
     def clean_memoisation(self) -> None:
         self.memoization = {}
@@ -32,10 +35,9 @@ class Evaluator:
     def __gen_full_inputs__(self, type_req: str) -> None:
         if type_req not in self.full_inputs:
             args = types.arguments(type_req)
-            possibles = [
-                self.base_inputs[arg][i:-i] + self.base_inputs[arg][-i:]
-                for i, arg in enumerate(args)
-            ]
+            possibles = [self.base_inputs[arg][:] for arg in args]
+            for el in possibles:
+                self.prng.shuffle(el)
             elems = []
             for full_input in product(*possibles):
                 elems.append(full_input)
