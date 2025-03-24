@@ -39,17 +39,21 @@ def sample_inputs(
 def load_file(
     file_path: str,
 ) -> Tuple[
-    dict[str, Tuple[str, callable]], str, dict[str, callable], dict[str, callable]
+    dict[str, Tuple[str, callable]], str, dict[str, callable], dict[str, callable], set
 ]:
     space = import_file_function(
-        file_path[:-3], ["dsl", "sample_dict", "equal_dict", "target_type"]
+        file_path[:-3],
+        ["dsl", "sample_dict", "equal_dict", "target_type", "skip_exceptions"],
     )()
+    equal_dict = getattr(space, "equal_dict", dict())
+    skip_exceptions = getattr(space, "skip_exceptions", set())
 
     return (
         {k: v for k, v in sorted(space.dsl.items())},
         space.target_type,
         space.sample_dict,
-        space.equal_dict,
+        equal_dict,
+        skip_exceptions,
     )
 
 
@@ -99,9 +103,9 @@ def parse_args():
 
 def main():
     args = parse_args()
-    dsl, target_type, sample_dict, equal_dict = load_file(args.dsl)
+    dsl, target_type, sample_dict, equal_dict, skip_exceptions = load_file(args.dsl)
     inputs = sample_inputs(args.samples, sample_dict, equal_dict)
-    evaluator = Evaluator(dsl, inputs, equal_dict)
+    evaluator = Evaluator(dsl, inputs, equal_dict, skip_exceptions)
     approx_constraints = find_approximate_constraints(dsl, evaluator)
     grammar, allowed = find_regular_constraints(
         dsl, evaluator, args.size, target_type, approx_constraints, args.optimize

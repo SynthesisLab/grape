@@ -27,7 +27,13 @@ dsl = {
 # Type of object you want to produce
 target_type = "int"
 
-# (Optional) Given a type provides an implementation of ==
+# (Optional) Every element underneath is OPTIONAL
+# In other words you can omit them without error
+
+# Set of errors which will not trigger but cause the program to return None
+skip_exceptions = {OverFlowError}
+
+# Given a type provides an implementation of ==
 # Warning: this is not fully supported so better leave it empty
 equal_dict = {}
 ```
@@ -35,9 +41,5 @@ equal_dict = {}
 Then you can run:
 
 ```sh
-python -m gpoe dsl.py --size 7 --samples 300 -o grammar.txt --constraints constraints.csv
+python -m gpoe dsl.py --size 7 --samples 300 -o grammar.txt
 ```
-
-## TODO
-
-- Offer choice of samples per type instead of globally since it can cause issues (e.g. boolean)

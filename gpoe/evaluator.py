@@ -10,6 +10,7 @@ class Evaluator:
         dsl: dict[str, tuple[str, callable]],
         inputs: dict[str, list],
         equal_dict: dict[str, callable],
+        skip_exceptions: set,
     ):
         self.dsl = dsl
         self.equiv_classes: dict[str, dict[Any, Program]] = {}
@@ -17,6 +18,7 @@ class Evaluator:
         self.base_inputs = inputs
         self.full_inputs_size = len(self.base_inputs[list(self.base_inputs.keys())[0]])
         self.full_inputs: dict[str, list] = {}
+        self.skip_exceptions = skip_exceptions
 
     def free(self) -> None:
         del self.dsl
@@ -45,7 +47,13 @@ class Evaluator:
         # Compute its values
         outs = []
         for full_input in self.full_inputs[type_req]:
-            out = self.__eval__(program, full_input)
+            try:
+                out = self.__eval__(program, full_input)
+            except Exception as e:
+                if any(isinstance(e, cls) for cls in self.skip_exceptions):
+                    out = None
+                else:
+                    raise e
             outs.append(out)
         # Check equivalence class
         rtype = types.return_type(type_req)
