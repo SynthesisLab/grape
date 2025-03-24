@@ -261,7 +261,7 @@ def test(
     sizes = set(new_memory_to_size.keys()) | set(old_memory_to_size.keys())
     for size in sizes:
         if size not in new_memory_to_size:
-            assert False
+            assert False, f"missing expressions of size: {size}"
         elif size not in old_memory_to_size:
             pass
             # print("+", new_memory_to_size[size])
@@ -271,5 +271,5 @@ def test(
             # if more:
             #     print("+", more)
             if less:
-                assert False
+                assert False, f"missing the following of size {size}: {less}"
     return total
