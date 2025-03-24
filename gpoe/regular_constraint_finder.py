@@ -88,10 +88,10 @@ def find_regular_constraints(
             should_keep = representative is None
             if last_size < enumerator.current_size:
                 pbar.update()
-                last_size = enumerator.current_size
+                last_size += 1
     except StopIteration:
         pass
-    pbar.update()
+    pbar.update(max_size - last_size + 1)
     pbar.close()
     evaluator.free()
     reduced_grammar, t = grammar_from_memory(
