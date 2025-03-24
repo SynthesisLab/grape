@@ -15,7 +15,7 @@ from tqdm import tqdm
 
 
 def __infer_mega_type_req__(
-    dsl: dict[str, tuple[str, callable]], rtype: str, max_size: int
+    dsl: dict[str, tuple[str, callable]], rtype: str | None, max_size: int
 ) -> str:
     # Capture max number of args of type that each type request needs
     max_per_type = defaultdict(int)
@@ -41,7 +41,7 @@ def __infer_mega_type_req__(
     for t, n in max_per_type.items():
         univ_type_req += [t] * n
 
-    type_req = "->".join(univ_type_req + [rtype])
+    type_req = "->".join(univ_type_req + [str(rtype)])
     return type_req
 
 
@@ -49,7 +49,7 @@ def find_regular_constraints(
     dsl: dict[str, tuple[str, callable]],
     evaluator: Evaluator,
     max_size: int,
-    rtype: str,
+    rtype: str | None,
     approx_constraints: list[tuple[Program, Program, str]],
     optimize: bool = False,
 ) -> tuple[DFTA[str, Program], list[tuple[Program, Program, str]]]:

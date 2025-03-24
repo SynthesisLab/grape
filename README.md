@@ -24,11 +24,12 @@ dsl = {
     "~": ("int -> int", lambda x: ~x),
     "1": ("int", 1)
 }
-# Type of object you want to produce
-target_type = "int"
 
 # (Optional) Every element underneath is OPTIONAL
 # In other words you can omit them without error
+
+# Type of object you want to produce, if not specified all types can be generated
+target_type = "int"
 
 # Set of errors which will not trigger but cause the program to return None
 skip_exceptions = {OverFlowError}

@@ -18,7 +18,8 @@ def grammar_from_type_constraints(
 ) -> DFTA[str, Program]:
     if requested_type not in __GRAMMARS__:
         args, rtype = types.parse(requested_type)
-        finals = set([rtype])
+        whatever = rtype == "None"
+        finals = set([rtype]) if not whatever else set()
         rules: dict[tuple[Program, tuple[str, ...]], str] = {}
         # Add variables
         for i, state in enumerate(args):
@@ -26,6 +27,8 @@ def grammar_from_type_constraints(
         # Add elements from DSL
         for primitive, (str_type, fn) in dsl.items():
             args, rtype = types.parse(str_type)
+            if whatever:
+                finals.add(rtype)
             rules[(Primitive(primitive), args)] = rtype
 
         dfta = DFTA(rules, finals)
@@ -39,11 +42,14 @@ def grammar_from_type_constraints_and_commutativity(
     dsl: dict[str, tuple[str, callable]], requested_type: str, programs: list[Program]
 ) -> DFTA[str, Program]:
     gargs, grtype = types.parse(requested_type)
-    finals = set([grtype])
+    whatever = grtype == "None"
+    finals = set([grtype]) if not whatever else set()
     rules: dict[tuple[Program, tuple[str, ...]], str] = {}
     prims_per_type = defaultdict(list)
     # Add variables
     for i, state in enumerate(gargs):
+        if whatever:
+            finals.add(state)
         rules[(Variable(i), tuple())] = state
         if state not in prims_per_type[state]:
             prims_per_type[state].append(state)
@@ -56,7 +62,7 @@ def grammar_from_type_constraints_and_commutativity(
     for primitive, (str_type, fn) in dsl.items():
         # check if this primitive is commutative
         args, rtype = types.parse(str_type)
-        if rtype == grtype:
+        if rtype == grtype or whatever:
             finals.add(primitive)
         patterns = [
             tuple(

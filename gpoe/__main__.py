@@ -39,7 +39,11 @@ def sample_inputs(
 def load_file(
     file_path: str,
 ) -> Tuple[
-    dict[str, Tuple[str, callable]], str, dict[str, callable], dict[str, callable], set
+    dict[str, Tuple[str, callable]],
+    str | None,
+    dict[str, callable],
+    dict[str, callable],
+    set,
 ]:
     space = import_file_function(
         file_path[:-3],
@@ -50,7 +54,7 @@ def load_file(
 
     return (
         {k: v for k, v in sorted(space.dsl.items())},
-        space.target_type,
+        getattr(space, "target_type", None),
         space.sample_dict,
         equal_dict,
         skip_exceptions,
