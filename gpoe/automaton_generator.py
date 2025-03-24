@@ -182,7 +182,6 @@ def grammar_from_memory(
         state_collapse[str(p)] = str(target)
 
     dfta = DFTA(rules, finals)
-    dfta.reduce()
     dfta = dfta.map_states(lambda x: state_collapse.get(x, x))
     dfta.reduce()
     # Note: it is useless to minimise the automaton is already minimal
