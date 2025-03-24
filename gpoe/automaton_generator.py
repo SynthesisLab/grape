@@ -268,7 +268,7 @@ def test(
     for size in sizes:
         if size not in new_memory_to_size:
             print(f"[warning] missing expressions of size: {size}", file=sys.stderr)
-            print(f"[warning] stopped check here to avoid blow up", file=sys.stderr)
+            print("[warning] stopped check here to avoid blow up", file=sys.stderr)
             break
         elif size not in old_memory_to_size:
             pass
@@ -283,6 +283,6 @@ def test(
                     f"[warning] missing the following of size {size}: {less}",
                     file=sys.stderr,
                 )
-                print(f"[warning] stopped check here to avoid blow up", file=sys.stderr)
+                print("[warning] stopped check here to avoid blow up", file=sys.stderr)
                 break
     return total
