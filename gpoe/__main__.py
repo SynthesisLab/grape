@@ -1,4 +1,5 @@
 import argparse
+import sys
 from typing import Tuple
 from tqdm import tqdm
 from gpoe.approximate_constraint_finder import find_approximate_constraints
@@ -118,6 +119,13 @@ def main():
         fd.write("program,type_request\n")
         for program, type_req in allowed:
             fd.write(f"{program},{type_req}\n")
+
+    missing = set(dsl.keys()).difference(set(map(str, grammar.alphabet)))
+    if missing:
+        print(
+            f"[warning] the following primitives are not present in the grammar: {', '.join(missing)}",
+            file=sys.stderr,
+        )
 
     # Save DFTA
     with open(args.output, "w") as fd:
