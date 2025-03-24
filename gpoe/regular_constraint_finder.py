@@ -1,4 +1,5 @@
 from collections import defaultdict
+import math
 from gpoe.enumerator import Enumerator
 from gpoe.evaluator import Evaluator
 from gpoe.program import Program
@@ -17,16 +18,28 @@ def __infer_mega_type_req__(
     dsl: dict[str, tuple[str, callable]], rtype: str, max_size: int
 ) -> str:
     # Capture max number of args of type that each type request needs
-    max_arity_per_type = defaultdict(int)
+    max_per_type = defaultdict(int)
     for str_type, _ in dsl.values():
         args = types.arguments(str_type)
+        count = defaultdict(int)
+        nargs = len(args)
         for arg in args:
-            max_arity_per_type[arg] = max(max_arity_per_type[arg], len(args))
+            count[arg] += 1
+        for arg, n in count.items():
+            per_copy = n
+            cost_per_copy = nargs + 1
+            # put your initial copy then all subsequent copies have cost
+            n_copies = (
+                1 + (max_size - cost_per_copy) / (cost_per_copy - 1)
+                if max_size >= cost_per_copy
+                else 0
+            )
+            j = int(n_copies * per_copy)
+            max_per_type[arg] = max(max_per_type[arg], j)
     # Produce the number of args
     univ_type_req = []
-    for t, n in max_arity_per_type.items():
-        j = int(max_size / 2 * (n - 1) + 1)
-        univ_type_req += [t] * j
+    for t, n in max_per_type.items():
+        univ_type_req += [t] * n
 
     type_req = "->".join(univ_type_req + [rtype])
     return type_req
