@@ -36,7 +36,8 @@ def import_file_function(
         out = {}
         for key in keys:
             get, set = key if isinstance(key, tuple) else (key, key)
-            out[set] = module.__getattribute__(get)
+            if hasattr(module, get):
+                out[set] = module.__getattribute__(get)
         return SimpleNamespace(**out)
 
     return loader
