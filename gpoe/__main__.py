@@ -17,11 +17,20 @@ def sample_inputs(
         pbar.set_postfix_str(sampled_type)
         eq_fn = equal_dict.get(sampled_type, lambda x, y: x == y)
         sampled_inputs = []
-        while len(sampled_inputs) < nsamples:
+        tries = 0
+        while len(sampled_inputs) < nsamples and tries < 100:
             sampled = sample_fn()
             if all(not eq_fn(sampled, el) for el in sampled_inputs):
                 sampled_inputs.append(sampled)
                 pbar.update()
+                tries = 0
+            tries += 1
+        while len(sampled_inputs) < nsamples:
+            before = len(sampled_inputs)
+            sampled_inputs += sampled_inputs
+            sampled_inputs = sampled_inputs[:nsamples]
+            pbar.update(len(sampled_inputs) - before)
+
         inputs[sampled_type] = sampled_inputs
     pbar.close()
     return inputs
