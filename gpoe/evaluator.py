@@ -35,15 +35,15 @@ class Evaluator:
     def __gen_full_inputs__(self, type_req: str) -> None:
         if type_req not in self.full_inputs:
             args = types.arguments(type_req)
-            possibles = [self.base_inputs[arg][:] for arg in args]
+            possibles = [list(set(self.base_inputs[arg])) for arg in args]
             for el in possibles:
                 self.prng.shuffle(el)
-            elems = []
+            elems = set()
             for full_input in product(*possibles):
-                elems.append(full_input)
+                elems.add(full_input)
                 if len(elems) > self.full_inputs_size:
                     break
-            self.full_inputs[type_req] = elems
+            self.full_inputs[type_req] = list(elems)
 
     def eval(self, program: Program, type_req: str) -> Optional[Program]:
         if program in self.memoization:
