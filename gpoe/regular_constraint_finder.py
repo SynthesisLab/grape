@@ -37,7 +37,7 @@ def __infer_mega_type_req__(
                 if max_size >= cost_per_copy
                 else 0
             )
-            j = int(n_copies * per_copy)
+            j = int(math.ceil(n_copies * per_copy))
             max_per_type[arg] = max(max_per_type[arg], j)
     # Produce the number of args
     univ_type_req = []
