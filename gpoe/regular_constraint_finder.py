@@ -55,7 +55,7 @@ def find_regular_constraints(
     assert basen >= ntrees
     enumerator = Enumerator(grammar)
     # Generate all programs until some size
-    pbar = tqdm(total=max_size)
+    pbar = tqdm(total=max_size, smoothing=1)
     pbar.set_description_str("obs. equiv.")
     gen = enumerator.enumerate_until_size(max_size + 1)
     program = next(gen)
