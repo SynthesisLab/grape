@@ -27,6 +27,8 @@ def import_file_function(
 
     prefixes is a list of prefixes to the import name to try in case of failure.
     """
+    if import_name.startswith("./"):
+        import_name = import_name[2:]
 
     def loader(fully_load: bool = True) -> Optional[SimpleNamespace]:
         if not fully_load:
