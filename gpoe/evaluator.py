@@ -17,6 +17,9 @@ class Evaluator:
         self.dsl = dsl
         self.equiv_classes: dict[str, dict[Any, Program]] = {}
         self.memoization: dict[Program, dict[Any, Any]] = {}
+        self.rtypes: dict[str, str] = {
+            p: types.return_type(stype) for p, (stype, _) in dsl.items()
+        }
         self.base_inputs = inputs
         self.full_inputs_size = len(self.base_inputs[list(self.base_inputs.keys())[0]])
         self.full_inputs: dict[str, list] = {}
@@ -45,6 +48,16 @@ class Evaluator:
                     break
             self.full_inputs[type_req] = list(elems)
 
+    def __return_type__(self, program: Program, type_req: str) -> str:
+        if isinstance(program, Variable):
+            return types.arguments(type_req)[program.no]
+        elif isinstance(program, Primitive):
+            return self.rtypes[program.name]
+        elif isinstance(program, Function):
+            return self.rtypes[program.function.name]
+        else:
+            raise ValueError
+
     def eval(self, program: Program, type_req: str) -> Optional[Program]:
         if program in self.memoization:
             return None
@@ -61,7 +74,7 @@ class Evaluator:
                     raise e
             outs.append(out)
         # Check equivalence class
-        rtype = types.return_type(type_req)
+        rtype = self.__return_type__(program, type_req)
         key = tuple(outs)
         if rtype not in self.equiv_classes:
             self.equiv_classes[rtype] = {}
