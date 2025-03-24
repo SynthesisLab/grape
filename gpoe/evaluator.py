@@ -20,6 +20,9 @@ class Evaluator:
         self.full_inputs: dict[str, list] = {}
         self.skip_exceptions = skip_exceptions
 
+    def clean_memoisation(self) -> None:
+        self.memoization = {}
+
     def free(self) -> None:
         del self.dsl
         del self.equiv_classes

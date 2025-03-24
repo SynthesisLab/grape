@@ -9,6 +9,7 @@ def find_approximate_constraints(
     evaluator: Evaluator,
 ) -> list[tuple[Program, Program, str]]:
     constraints = __find_commutativity__(dsl, evaluator)
+    evaluator.clean_memoisation()
     return constraints
 
 
