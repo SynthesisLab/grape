@@ -15,7 +15,10 @@ from tqdm import tqdm
 
 
 def __infer_mega_type_req__(
-    dsl: dict[str, tuple[str, callable]], rtype: str | None, max_size: int
+    dsl: dict[str, tuple[str, callable]],
+    rtype: str | None,
+    max_size: int,
+    samplable_types: set[str],
 ) -> str:
     # Capture max number of args of type that each type request needs
     max_per_type = defaultdict(int)
@@ -39,7 +42,8 @@ def __infer_mega_type_req__(
     # Produce the number of args
     univ_type_req = []
     for t, n in max_per_type.items():
-        univ_type_req += [t] * n
+        if t in samplable_types:
+            univ_type_req += [t] * n
 
     type_req = "->".join(univ_type_req + [str(rtype)])
     return type_req
@@ -54,7 +58,9 @@ def find_regular_constraints(
     optimize: bool = False,
 ) -> tuple[DFTA[str, Program], list[tuple[Program, Program, str]]]:
     # Find all type requests
-    type_req = __infer_mega_type_req__(dsl, rtype, max_size)
+    type_req = __infer_mega_type_req__(
+        dsl, rtype, max_size, set(evaluator.base_inputs.keys())
+    )
 
     base_grammar = grammar_from_type_constraints(dsl, type_req)
     grammar = grammar_from_type_constraints_and_commutativity(

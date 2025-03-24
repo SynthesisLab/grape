@@ -112,6 +112,9 @@ def __find_commutativity__(
         args = types.arguments(stype)
         if len(args) < 2:
             continue
+        # Check if we can sample all elements
+        if any(t not in evaluator.base_inputs for t in args):
+            continue
         base_program = Function(
             Primitive(prim), [Variable(i) for i in range(len(args))]
         )
