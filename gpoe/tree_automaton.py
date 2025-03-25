@@ -250,6 +250,12 @@ class DFTA(Generic[U, V]):
             set(map(mapping, self.finals)),
         )
 
+    def map_alphabet(self, mapping: Callable[[V], X]) -> "DFTA[U, X]":
+        return DFTA(
+            {(mapping(l), args): dst for (l, args), dst in self.rules.items()},
+            self.finals.copy(),
+        )
+
     def trees_by_size(self, size: int) -> dict[int, int]:
         """
         Return the number of trees produced of all sizes until the given size (included).

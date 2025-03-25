@@ -2,8 +2,10 @@ import argparse
 import sys
 from typing import Tuple
 from tqdm import tqdm
+from gpoe import types
 from gpoe.approximate_constraint_finder import find_approximate_constraints
 from gpoe.evaluator import Evaluator
+from gpoe.program import Primitive
 from gpoe.regular_constraint_finder import find_regular_constraints
 from gpoe.import_utils import import_file_function
 
@@ -35,6 +37,27 @@ def sample_inputs(
         inputs[sampled_type] = sampled_inputs
     pbar.close()
     return inputs
+
+
+TYPE_SEP = "|@>"
+
+
+def preprocess_dsl(
+    dsl: dict[str, Tuple[str, callable]],
+) -> tuple[dict[str, Tuple[str, callable]], dict[Primitive, Primitive]]:
+    new_dsl = {}
+    to_merge = {}
+    for name, (stype, fn) in dsl.items():
+        variants = types.all_variants(stype)
+        if len(variants) == 1:
+            new_dsl[name] = (stype, fn)
+        else:
+            for sversion in variants:
+                new_name = f"{name}{TYPE_SEP}{sversion}"
+                new_dsl[new_name] = (sversion, fn)
+                to_merge[Primitive(new_name)] = Primitive(name)
+
+    return new_dsl, to_merge
 
 
 def load_file(
@@ -108,7 +131,10 @@ def parse_args():
 
 def main():
     args = parse_args()
-    dsl, target_type, sample_dict, equal_dict, skip_exceptions = load_file(args.dsl)
+    original_dsl, target_type, sample_dict, equal_dict, skip_exceptions = load_file(
+        args.dsl
+    )
+    dsl, to_merge = preprocess_dsl(original_dsl)
     inputs = sample_inputs(args.samples, sample_dict, equal_dict)
     evaluator = Evaluator(dsl, inputs, equal_dict, skip_exceptions)
     approx_constraints = find_approximate_constraints(dsl, evaluator)
@@ -121,6 +147,15 @@ def main():
             fd.write(f"{program},{type_req}\n")
 
     missing = set(dsl.keys()).difference(set(map(str, grammar.alphabet)))
+    if any(TYPE_SEP in t for t in missing):
+        missing_version = {t for t in missing if TYPE_SEP in t}
+        print(
+            f"[warning] the following primitives are not present in some versions in the grammar: {', '.join(missing_version)}",
+            file=sys.stderr,
+        )
+    grammar = grammar.map_alphabet(lambda x: to_merge.get(x, x))
+
+    missing = set(original_dsl.keys()).difference(set(map(str, grammar.alphabet)))
     if missing:
         print(
             f"[warning] the following primitives are not present in the grammar: {', '.join(missing)}",

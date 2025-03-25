@@ -14,6 +14,16 @@ random.seed(1)
 sample_dict = {"int": lambda: int(random.randint(-MAXI, MAXI))}
 
 # Given a primitive provides a tuple (type, implementation)
+# supported types are:
+#   - primitive: just give it a name and you are good to go!
+#   - sum types: a | b can either be a or b
+#   - polymorphics: 'a [ t1 | t2 ] -> 'a
+#       syntax: must start with a "'"
+#               the list of supported types must be given at 1st usage inside the []
+#       semantic: the above example means either: t1 -> t1 or t2 -> t2 
+#                 but t1 -> t2 and t2 -> t1 are impossibles 
+#                 because all instanciations of 'a must have the same value
+#                 at any given time
 dsl = {
     "+": ("int -> int -> int", lambda x, y: x + y),
     "*": ("int -> int -> int", lambda x, y: x * y),
