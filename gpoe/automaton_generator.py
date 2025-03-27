@@ -213,12 +213,14 @@ def grammar_from_memory(
     # Note: it is useless to minimise the automaton is already minimal
     mapping = {}
 
-    def get_name(x: str) -> str:
+    def get_name(x: tuple[str, ...]) -> str:
         if x not in mapping:
             mapping[x] = f"S{len(mapping)}"
         return mapping[x]
 
-    relevant_dfta = dfta.minimise().map_states(get_name)
+    relevant_dfta = dfta.minimise(
+        get_name, lambda x, y: state2type.get(x) == state2type.get(y)
+    )
     # free memory
     del dfta
     n = 0
@@ -248,7 +250,6 @@ def grammar_from_memory(
     for x in added:
         del relevant_dfta.rules[x]
     relevant_dfta.refresh_reversed_rules()
-
     return relevant_dfta, n
 
 
