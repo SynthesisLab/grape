@@ -10,32 +10,24 @@ from gpoe.tree_automaton import DFTA
 import gpoe.types as types
 
 
-__GRAMMARS__ = {}
-
-
 def grammar_from_type_constraints(
     dsl: dict[str, tuple[str, callable]], requested_type: str
 ) -> DFTA[str, Program]:
-    if requested_type not in __GRAMMARS__:
-        args, rtype = types.parse(requested_type)
-        whatever = rtype == "None"
-        finals = set([rtype]) if not whatever else set()
-        rules: dict[tuple[Program, tuple[str, ...]], str] = {}
-        # Add variables
-        for i, state in enumerate(args):
-            rules[(Variable(i), tuple())] = state
-        # Add elements from DSL
-        for primitive, (str_type, fn) in dsl.items():
-            args, rtype = types.parse(str_type)
-            if whatever:
-                finals.add(rtype)
-            rules[(Primitive(primitive), args)] = rtype
-
-        dfta = DFTA(rules, finals)
-        __GRAMMARS__[requested_type] = dfta
-        return dfta
-    else:
-        return __GRAMMARS__[requested_type]
+    args, rtype = types.parse(requested_type)
+    whatever = rtype == "None"
+    finals = set([rtype]) if not whatever else set()
+    rules: dict[tuple[Program, tuple[str, ...]], str] = {}
+    # Add variables
+    for i, state in enumerate(args):
+        rules[(Variable(i), tuple())] = state
+    # Add elements from DSL
+    for primitive, (str_type, fn) in dsl.items():
+        args, rtype = types.parse(str_type)
+        if whatever:
+            finals.add(rtype)
+        rules[(Primitive(primitive), args)] = rtype
+    dfta = DFTA(rules, finals)
+    return dfta
 
 
 def grammar_from_type_constraints_and_commutativity(
