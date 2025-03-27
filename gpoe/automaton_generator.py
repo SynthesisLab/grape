@@ -195,8 +195,17 @@ def grammar_from_memory(
                     merge_candidates.append(prog)
                     best = (not optimize) or compute_out(str(prog))
                     break
-        target = merge_candidates.pop(0)
-        state_collapse[str(p)] = str(target)
+        if len(merge_candidates) == 0:
+            # No merge was found
+            # That is, there does not exist any subcontext of this context
+            # In other words, no var of type "target_type" exists
+            print(
+                f"[warning] the following program could not be made to loop: {p}",
+                file=sys.stderr,
+            )
+        else:
+            target = merge_candidates.pop(0)
+            state_collapse[str(p)] = str(target)
 
     dfta = DFTA(rules, finals)
     dfta = dfta.map_states(lambda x: state_collapse.get(x, x))
