@@ -1,8 +1,14 @@
-from itertools import product
 import random
-from typing import Any, Optional, Tuple
+from typing import Any, Generator, Optional, Tuple
 from gpoe.program import Function, Primitive, Program, Variable
 import gpoe.types as types
+
+
+def random_product(
+    prng: random.Random, *elements: list
+) -> Generator[tuple, None, None]:
+    while True:
+        yield tuple(prng.choice(li) for li in elements)
 
 
 class Evaluator:
@@ -42,9 +48,12 @@ class Evaluator:
             for el in possibles:
                 self.prng.shuffle(el)
             elems = set()
-            for full_input in product(*possibles):
+            tries = 0
+            max_tries = 100 * len(possibles)
+            for full_input in random_product(self.prng, *possibles):
+                tries = tries + 1 if full_input in elems else 0
                 elems.add(full_input)
-                if len(elems) > self.full_inputs_size:
+                if len(elems) > self.full_inputs_size or tries > max_tries:
                     break
             self.full_inputs[type_req] = list(elems)
 
