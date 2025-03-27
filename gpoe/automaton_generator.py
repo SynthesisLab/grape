@@ -94,6 +94,7 @@ def __fix_vars__(program: Program, var_merge: dict[int, int]) -> Program:
 
 
 def grammar_from_memory(
+    dsl: dict[str, tuple[str, callable]],
     memory: dict[Any, dict[int, list[Program]]],
     type_req: str,
     prev_finals: set[str],
@@ -113,15 +114,28 @@ def grammar_from_memory(
     # Produce rules incrementally
     rules: dict[tuple[Program, tuple[str, ...]], str] = {}
     finals: set[str] = set()
-    prod_programs: dict[int, set[Program]] = defaultdict(set)
+    prod_programs: dict[int, dict[str, set[Program]]] = defaultdict(
+        lambda: defaultdict(set)
+    )
     consumed: set[Program] = set()
+    state2type: dict[str, str] = {}
+
+    def get_rtype(p: Program) -> str:
+        if isinstance(p, Variable):
+            return args_type[p.no]
+        elif isinstance(p, Primitive):
+            return dsl[p.name][0]
+        elif isinstance(p, Function):
+            return types.return_type(dsl[str(p.function)][0])
+        else:
+            raise ValueError
+
     for size in tqdm(range(1, max_size + 1), desc="building automaton"):
         for state in sorted(memory):
             programs = memory[state][size]
             fixed = {__fix_vars__(prog, var_merge) for prog in programs}
             for prog in fixed:
                 dst = str(prog)
-                prod_programs[size].add(prog)
                 if isinstance(prog, Function):
                     key = (prog.function, tuple(map(str, prog.arguments)))
                     consumed.update(prog.arguments)
@@ -129,16 +143,20 @@ def grammar_from_memory(
                     key = (prog, ())
                 assert key not in rules
                 rules[key] = dst
+                rtype = get_rtype(prog)
+                state2type[dst] = rtype
+                prod_programs[size][rtype].add(prog)
                 if state in prev_finals:
                     finals.add(dst)
 
     # "Collapse" it to generate infinite size
     # 1. find all states which are not consumed
     not_consumed: set[Program] = set()
-    for progs in sorted(prod_programs.values()):
-        for prog in progs:
-            if prog not in consumed:
-                not_consumed.add(prog)
+    for dico in sorted(prod_programs.values(), key=lambda x: tuple(x.keys())):
+        for progs in sorted(dico.values()):
+            for prog in progs:
+                if prog not in consumed:
+                    not_consumed.add(prog)
     # 2. Say that all not consumed must be consumed at some point
     # Assume they must be from some function
     state_collapse = {}
@@ -164,10 +182,11 @@ def grammar_from_memory(
         merge_candidates = []
         size_of_canditates = 0
         best = float("inf")
+        target_type = get_rtype(p)
         for csize in reversed(range(1, p.size())):
             if csize < size_of_canditates:
                 break
-            for prog in prod_programs[csize]:
+            for prog in prod_programs[csize][target_type]:
                 if (
                     prog != p
                     and (not optimize or compute_out(str(prog)) < best)
