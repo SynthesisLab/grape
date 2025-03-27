@@ -2,6 +2,7 @@ from typing import Generator, Tuple
 
 
 def integer_partitions(k: int, n: int) -> Generator[Tuple[int, ...], None, None]:
+    if k > n: return
     tup = [n - k + 1] + [1] * (k - 1)
     yield tuple(tup)
     while True:
