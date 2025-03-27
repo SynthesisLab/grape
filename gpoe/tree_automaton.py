@@ -147,7 +147,9 @@ class DFTA(Generic[U, V]):
         pass
 
     def minimise(
-        self, mapping: Union[Literal[None], Callable[[Tuple[U, ...]], W]] = None
+        self,
+        mapping: Union[Literal[None], Callable[[Tuple[U, ...]], W]] = None,
+        can_be_merged: Callable[[U, U], bool] = lambda x, y: True,
     ) -> "Union[DFTA[Tuple[U, ...], V], DFTA[W, V]]":
         """
         Assumes this is a reduced DTFA.
@@ -157,6 +159,7 @@ class DFTA(Generic[U, V]):
         Brainerd, Walter S.. “The Minimalization of Tree Automata.” Inf. Control. 13 (1968): 484-491.
         """
         # 1. Build consumer_of
+        # state -> list of (letter, args), no_of_arg consuming state
         consumer_of: Dict[
             U,
             List[
@@ -173,9 +176,7 @@ class DFTA(Generic[U, V]):
             for k, ik in enumerate(args):
                 consumer_of[ik].append(((l, args), k))
         # 2. Init equiv classes
-        state2cls: Dict[U, int] = {
-            q: 0 if q not in self.finals else 1 for q in self.states
-        }
+        state2cls: Dict[U, int] = {q: int(q in self.finals) for q in self.states}
         cls2states: Dict[int, Tuple[U, ...]] = {
             j: tuple({q for q, i in state2cls.items() if i == j}) for j in [0, 1]
         }
@@ -183,8 +184,16 @@ class DFTA(Generic[U, V]):
         n = 1
         finished = False
 
-        # Routine
+        # Routines
         def are_equivalent(a: U, b: U) -> bool:
+            """
+            Check that two states are equivalent:
+
+            all consumers of a, can also consume b at the same argument index and map to the same equivalent class
+            and vice-versa
+            """
+            if not can_be_merged(a, b):
+                return False
             for S, k in consumer_of[a]:
                 P, args = S
                 # Replacing a at index k with b
@@ -210,11 +219,15 @@ class DFTA(Generic[U, V]):
             # For each equivalence class
             for i in range(n + 1):
                 cls = list(cls2states[i])
+                # While there is something in the ith class
                 while cls:
                     new_cls = []
                     representative = cls.pop()
                     new_cls.append(representative)
                     next_cls = []
+                    # Build two classes:
+                    #   - new: all states that are equivalent to representative
+                    #   - next: all the other states
                     for q in cls:
                         if are_equivalent(representative, q):
                             new_cls.append(q)
@@ -222,6 +235,8 @@ class DFTA(Generic[U, V]):
                             next_cls.append(q)
                     cls = next_cls
                     if len(cls) != 0:
+                        # next becomes the new nth class
+
                         # Create new equivalence class
                         n += 1
                         for q in new_cls:
@@ -229,6 +244,7 @@ class DFTA(Generic[U, V]):
                         cls2states[n] = tuple(new_cls)
                         finished = False
                     else:
+                        # No new class has been made so we can go to the next equivalence class (hence cls = [])
                         # new_cls (now) has NOT changed from cls (previous iter.), they are the same
                         # thus we just need to re-set it (because there might have been multiple iterations)
                         # i is a free slot since other classes are added at the end
