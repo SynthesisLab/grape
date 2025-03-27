@@ -146,6 +146,8 @@ def main():
         for program, type_req in allowed:
             fd.write(f"{program},{type_req}\n")
 
+    type_req = allowed[0][-1]
+    types.check_automaton(grammar, dsl, type_req)
     missing = set(dsl.keys()).difference(set(map(str, grammar.alphabet)))
     if any(TYPE_SEP in t for t in missing):
         missing_version = {t for t in missing if TYPE_SEP in t}
