@@ -56,6 +56,7 @@ def find_regular_constraints(
     rtype: str | None,
     approx_constraints: list[tuple[Program, Program, str]],
     optimize: bool = False,
+    no_loop: bool = False,
 ) -> tuple[DFTA[str, Program], list[tuple[Program, Program, str]]]:
     # Find all type requests
     type_req = __infer_mega_type_req__(
@@ -95,7 +96,7 @@ def find_regular_constraints(
     pbar.close()
     evaluator.free()
     reduced_grammar, t = grammar_from_memory(
-        dsl, enumerator.memory, type_req, grammar.finals, optimize
+        dsl, enumerator.memory, type_req, grammar.finals, optimize, no_loop
     )
     print("at size:", max_size)
     print(

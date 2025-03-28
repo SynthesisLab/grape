@@ -196,6 +196,7 @@ This automaton describes a language from programs up to a fixed size.
 
 ### Step 6
 
+This step is done only if the flag ``--no-loop`` is not given.
 We now extend the automaton to make it work for any size of programs.
 There are numerous ways to do this, however we considered a non-optimal but faster one due to the sheer combinatorial explosion of the size of the automata considered.
 The idea is to take ending states of programs of maximal size and make them loop over the maximum size.
@@ -250,6 +251,10 @@ For the ``--optimize`` flag:
 
 - on our hardware, recent i7, it was 10 times as slow.
 - on the provided example case, it provided no improvement, even if it did we expect the improvements to be minimal.
+
+For the ``--no-loop`` flag:
+
+- if you compare the number of programs up to the max size with and without the flag, you will observe that without ``no-loop`` there are slightly more programs because of the loops. It is not a bug, it is due that some programs are not of the maximum size and needs to loop, therefore producing new redundant programs because of the loops within the size bound.
 
 ## Output Format
 
