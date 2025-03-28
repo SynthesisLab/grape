@@ -99,6 +99,7 @@ def grammar_from_memory(
     type_req: str,
     prev_finals: set[str],
     optimize: bool = False,
+    no_loop: bool = False,
 ) -> tuple[DFTA[str, Program], int]:
     max_size = max(max(memory[state].keys()) for state in memory)
     args_type = types.arguments(type_req)
@@ -138,27 +139,19 @@ def grammar_from_memory(
                 dst = str(prog)
                 if isinstance(prog, Function):
                     key = (prog.function, tuple(map(str, prog.arguments)))
-                    consumed.update(prog.arguments)
+                    if not no_loop:
+                        consumed.update(prog.arguments)
                 else:
                     key = (prog, ())
                 assert key not in rules
                 rules[key] = dst
                 rtype = get_rtype(prog)
                 state2type[dst] = rtype
-                prod_programs[size][rtype].add(prog)
+                if not no_loop:
+                    prod_programs[size][rtype].add(prog)
                 if state in prev_finals:
                     finals.add(dst)
 
-    # "Collapse" it to generate infinite size
-    # 1. find all states which are not consumed
-    not_consumed: set[Program] = set()
-    for dico in sorted(prod_programs.values(), key=lambda x: tuple(x.keys())):
-        for progs in sorted(dico.values()):
-            for prog in progs:
-                if prog not in consumed:
-                    not_consumed.add(prog)
-    # 2. Say that all not consumed must be consumed at some point
-    # Assume they must be from some function
     state_collapse = {}
 
     # Used for optimize=True Flag
@@ -177,35 +170,45 @@ def grammar_from_memory(
 
         return out_transitions[state]
 
-    for p in tqdm(not_consumed, desc="extending automaton"):
-        # We should merge their state with the state of the highest sketch match
-        merge_candidates = []
-        size_of_canditates = 0
-        best = float("inf")
-        target_type = get_rtype(p)
-        for csize in reversed(range(1, p.size())):
-            if csize < size_of_canditates:
-                break
-            for prog in prod_programs[csize][target_type]:
-                if (
-                    prog != p
-                    and (not optimize or compute_out(str(prog)) < best)
-                    and prog.can_be_embed_into(p)
-                ):
-                    merge_candidates.append(prog)
-                    best = (not optimize) or compute_out(str(prog))
+    if not no_loop:
+        # "Collapse" it to generate infinite size
+        # 1. find all states which are not consumed
+        not_consumed: set[Program] = set()
+        for dico in sorted(prod_programs.values(), key=lambda x: tuple(x.keys())):
+            for progs in sorted(dico.values()):
+                for prog in progs:
+                    if prog not in consumed:
+                        not_consumed.add(prog)
+        # 2. Say that all not consumed must be consumed at some point
+        for p in tqdm(not_consumed, desc="extending automaton"):
+            # We should merge their state with the state of the highest sketch match
+            merge_candidates = []
+            size_of_canditates = 0
+            best = float("inf")
+            target_type = get_rtype(p)
+            for csize in reversed(range(1, p.size())):
+                if csize < size_of_canditates:
                     break
-        if len(merge_candidates) == 0:
-            # No merge was found
-            # That is, there does not exist any subcontext of this context
-            # In other words, no var of type "target_type" exists
-            print(
-                f"[warning] the following program could not be made to loop: {p}",
-                file=sys.stderr,
-            )
-        else:
-            target = merge_candidates.pop(0)
-            state_collapse[str(p)] = str(target)
+                for prog in prod_programs[csize][target_type]:
+                    if (
+                        prog != p
+                        and (not optimize or compute_out(str(prog)) < best)
+                        and prog.can_be_embed_into(p)
+                    ):
+                        merge_candidates.append(prog)
+                        best = (not optimize) or compute_out(str(prog))
+                        break
+            if len(merge_candidates) == 0:
+                # No merge was found
+                # That is, there does not exist any subcontext of this context
+                # In other words, no var of type "target_type" exists
+                print(
+                    f"[warning] the following program could not be made to loop: {p}",
+                    file=sys.stderr,
+                )
+            else:
+                target = merge_candidates.pop(0)
+                state_collapse[str(p)] = str(target)
 
     dfta = DFTA(rules, finals)
     dfta = dfta.map_states(lambda x: state_collapse.get(x, x))
@@ -218,7 +221,7 @@ def grammar_from_memory(
             mapping[x] = f"S{len(mapping)}"
         return mapping[x]
 
-    relevant_dfta = dfta.minimise(
+    relevant_dfta: DFTA = dfta.minimise(
         get_name, lambda x, y: state2type.get(x) == state2type.get(y)
     )
     # free memory

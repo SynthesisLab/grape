@@ -125,6 +125,11 @@ def parse_args():
         action="store_true",
         help="try to further reduce the number of programs. this is very slow and on average offers no or small gains",
     )
+    parser.add_argument(
+        "--no-loop",
+        action="store_true",
+        help="the grammar will produce programs only up to the size specified",
+    )
 
     return parser.parse_args()
 
@@ -139,7 +144,13 @@ def main():
     evaluator = Evaluator(dsl, inputs, equal_dict, skip_exceptions)
     approx_constraints = find_approximate_constraints(dsl, evaluator)
     grammar, allowed = find_regular_constraints(
-        dsl, evaluator, args.size, target_type, approx_constraints, args.optimize
+        dsl,
+        evaluator,
+        args.size,
+        target_type,
+        approx_constraints,
+        args.optimize,
+        args.no_loop,
     )
     with open(args.allowed, "w") as fd:
         fd.write("program,type_request\n")
