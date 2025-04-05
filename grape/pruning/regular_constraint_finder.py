@@ -1,15 +1,16 @@
 from collections import defaultdict
 import math
-from gpoe.enumerator import Enumerator
-from gpoe.evaluator import Evaluator
-from gpoe.program import Program
-from gpoe.automaton_generator import (
+from grape.dsl import DSL
+from grape.enumerator import Enumerator
+from grape.evaluator import Evaluator
+from grape.program import Program
+from grape.automaton_generator import (
+    grammar_by_saturation,
     grammar_from_memory,
-    grammar_from_type_constraints,
     grammar_from_type_constraints_and_commutativity,
 )
-from gpoe.tree_automaton import DFTA
-import gpoe.types as types
+from grape.automaton.tree_automaton import DFTA
+import grape.types as types
 
 from tqdm import tqdm
 
@@ -50,7 +51,7 @@ def __infer_mega_type_req__(
 
 
 def find_regular_constraints(
-    dsl: dict[str, tuple[str, callable]],
+    dsl: DSL,
     evaluator: Evaluator,
     max_size: int,
     rtype: str | None,
@@ -60,10 +61,10 @@ def find_regular_constraints(
 ) -> tuple[DFTA[str, Program], list[tuple[Program, Program, str]]]:
     # Find all type requests
     type_req = __infer_mega_type_req__(
-        dsl, rtype, max_size, set(evaluator.base_inputs.keys())
+        dsl.primitives, rtype, max_size, set(evaluator.base_inputs.keys())
     )
 
-    base_grammar = grammar_from_type_constraints(dsl, type_req)
+    base_grammar = grammar_by_saturation(dsl, type_req)
     grammar = grammar_from_type_constraints_and_commutativity(
         dsl, type_req, [p[0] for p in approx_constraints]
     )
@@ -94,9 +95,9 @@ def find_regular_constraints(
         pass
     pbar.update(max_size - last_size + 1)
     pbar.close()
-    evaluator.free()
+    evaluator.free_memory()
     reduced_grammar, t = grammar_from_memory(
-        dsl, enumerator.memory, type_req, grammar.finals, optimize, no_loop
+        dsl.primitives, enumerator.memory, type_req, grammar.finals, optimize, no_loop
     )
     print("at size:", max_size)
     print(

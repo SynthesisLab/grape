@@ -2,8 +2,9 @@ from collections import defaultdict
 from itertools import product
 from typing import Any
 
-from gpoe.program import Primitive, Program, Variable
-from gpoe.tree_automaton import DFTA
+from grape.dsl import DSL
+from grape.program import Primitive, Program, Variable
+from grape.automaton.tree_automaton import DFTA
 
 
 def return_type(type_req: str) -> str:
@@ -57,9 +58,7 @@ def all_variants(type_req: str) -> list[str]:
     return out
 
 
-def check_automaton(
-    dfta: DFTA[Any, Program], dsl: dict[str, tuple[str, callable]], type_req: str
-) -> bool:
+def check_automaton(dfta: DFTA[Any, Program], dsl: DSL, type_req: str) -> bool:
     var_types = arguments(type_req)
     state2type = {}
     state2reasons = defaultdict(list)
@@ -82,7 +81,7 @@ def check_automaton(
             if isinstance(P, Variable):
                 target_type = var_types[P.no]
             else:
-                target_type = dsl[str(P)][0]
+                target_type = dsl.primitives[str(P)][0]
             return f"\t{P} -> {dst} [{state2type[dst]} found: {target_type}]"
         else:
             assert isinstance(P, Primitive)
@@ -110,11 +109,11 @@ def check_automaton(
             if isinstance(P, Variable):
                 target_type = var_types[P.no]
             else:
-                target_type = dsl[str(P)][0]
+                target_type = dsl.primitives[str(P)][0]
             check(dst, target_type, transition)
         else:
             assert isinstance(P, Primitive)
-            arg_types, rtype = parse(dsl[P.name][0])
+            arg_types, rtype = parse(dsl.primitives[P.name][0])
             check(dst, rtype, transition)
             for arg_state, arg_type in zip(args, arg_types):
                 check(arg_state, arg_type, transition)

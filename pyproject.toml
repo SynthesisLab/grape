@@ -1,9 +1,15 @@
 [project]
-name = "gpoe"
+name = "grape"
 version = "0.1.0"
-description = "Grammar Pruning with Observational Equivalence (GPOE)"
+description = "GRAmmar for Program synthEsis (GRAPE)"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "tqdm>=4.67.1",
 ]
+
+
+[project.scripts]
+grape-prune = "grape.cli.prune:main"
+grape-count = "grape.cli.count:main"
+grape-compile = "grape.cli.compile:main"

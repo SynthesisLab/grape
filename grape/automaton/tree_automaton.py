@@ -13,7 +13,7 @@ from typing import (
     overload,
 )
 
-from gpoe.partitions import integer_partitions
+from grape.partitions import integer_partitions
 
 U = TypeVar("U")
 V = TypeVar("V")
@@ -303,23 +303,10 @@ class DFTA(Generic[U, V]):
         """
         return self.trees_by_size(size)[size]
 
-    def __repr__(self) -> str:
-        s = "finals:" + ",".join(sorted(map(str, self.finals))) + "\n"
-        s += "terminals:" + ",".join(sorted(map(str, self.alphabet))) + "\n"
-        s += "nonterminals:" + ",".join(sorted(map(str, self.states))) + "\n"
-        lines = []
-        for (P, args), dst in self.rules.items():
-            add = ""
-            if len(args) > 0:
-                add = "," + ",".join(map(str, args))
-            lines.append(f"{dst},{P}{add}")
-
-        return s + "\n".join(sorted(lines))
-
     def __str__(self) -> str:
         s = "finals:" + ", ".join(sorted(map(str, self.finals))) + "\n"
-        s += "terminals:" + ", ".join(sorted(map(str, self.alphabet))) + "\n"
-        s += "nonterminals:" + ", ".join(sorted(map(str, self.states))) + "\n"
+        s += "letters:" + ", ".join(sorted(map(str, self.alphabet))) + "\n"
+        s += "states:" + ", ".join(sorted(map(str, self.states))) + "\n"
         lines = []
         for (P, args), dst in self.rules.items():
             add = ""
