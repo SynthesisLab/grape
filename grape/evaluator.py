@@ -1,7 +1,8 @@
 import random
-from typing import Any, Generator, Optional, Tuple
-from gpoe.program import Function, Primitive, Program, Variable
-import gpoe.types as types
+from typing import Any, Generator, Optional
+from grape.dsl import DSL
+from grape.program import Function, Primitive, Program, Variable
+import grape.types as types
 
 
 def random_product(
@@ -14,7 +15,7 @@ def random_product(
 class Evaluator:
     def __init__(
         self,
-        dsl: dict[str, tuple[str, callable]],
+        dsl: DSL,
         inputs: dict[str, list],
         equal_dict: dict[str, callable],
         skip_exceptions: set,
@@ -24,7 +25,7 @@ class Evaluator:
         self.equiv_classes: dict[str, dict[Any, Program]] = {}
         self.memoization: dict[Program, dict[Any, Any]] = {}
         self.rtypes: dict[str, str] = {
-            p: types.return_type(stype) for p, (stype, _) in dsl.items()
+            p: types.return_type(stype) for p, (stype, _) in dsl.primitives.items()
         }
         self.base_inputs = inputs
         self.full_inputs_size = len(self.base_inputs[list(self.base_inputs.keys())[0]])
@@ -35,7 +36,7 @@ class Evaluator:
     def clean_memoisation(self) -> None:
         self.memoization = {}
 
-    def free(self) -> None:
+    def free_memory(self) -> None:
         del self.dsl
         del self.equiv_classes
         del self.memoization
@@ -94,7 +95,7 @@ class Evaluator:
             del self.memoization[program]
         return representative
 
-    def __eval__(self, program: Program, full_input: Tuple[Any, ...]) -> Any:
+    def __eval__(self, program: Program, full_input: tuple[Any, ...]) -> Any:
         if program in self.memoization:
             if full_input in self.memoization[program]:
                 return self.memoization[program][full_input]
@@ -105,7 +106,7 @@ class Evaluator:
         if isinstance(program, Variable):
             out = full_input[program.no]
         elif isinstance(program, Primitive):
-            out = self.dsl[program.name][1]
+            out = self.dsl.semantic(program.name)
         elif isinstance(program, Function):
             fun = self.__eval__(program.function, full_input)
             arg_vals = [self.__eval__(arg, full_input) for arg in program.arguments]

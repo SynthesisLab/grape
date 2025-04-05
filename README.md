@@ -1,33 +1,41 @@
-# Grammar Pruning with Observational Equivalence (GPOE)
+# GRAmmar for Program synthEsis (GRAPE)
 
-Given a domain specific language (DSL), the goal of this tool is to automatically find the semantically redundant programs.
+This tools aims to make it easy to manipulate grammars for program synthesis.
 
-Take for example: ``x, -x, - (-x)``, ``- (-x)`` is redundant since it evaluates to ``x`` whatever the ``x`` value.
+It has the following features:
 
-This tool offers automatically finding these redundancies by evaluating the programs.
-It works by enumerating program by increasing size until a maximum target size, each enumerated program is evaluated on sampled inputs.
-The evaluation of a program on the set of inputs is its characteristic sequence, two programs that have the same characteristic sequences are redundant, therefore only the smallest program is kept.
+- ``grape-compile``: produce a grammar from a basic DSL
+- ``grape-prune``: produce a pruned grammar by removing redundant programs
+- ``grape-count``: count the number of programs in a grammar up to a specific size
 
-Currently, this redundant information is compiled by the tool to produce:
+planned:
 
-- a deterministic bottom-up tree automaton, which can trivially be converted into a context-free grammar for example;
-- a set of program rewrites
+- ``grape-convert``: convert a grammar into another format
+- ``grape-union``: produce the union of two grammars when reading the same letter
+- ``grape-intersection``: produce the intersection of two grammars when reading the same letter
+
+Supported grammar formats:
+
+- ``.grape``: our own format
+- ``.bnf``: (planned) BNF format
+- ``.ebnf``: (planned) EBNF format
 
 **Table of contents**:
 <!-- TOC START -->
 - [Installation](#installation)
 - [Example](#example)
-- [How it works](#how-it-works)
+- [Pruning](#pruning)
+  - [How it works](#how-it-works)
+  - [Additional Notes](#additional-notes)
 - [Type System](#type-system)
-- [Additional Notes](#additional-notes)
-- [Output Format](#output-format)
+- [GRAPE Format](#grape-format)
 
 <!-- TOC END -->
 
 ## Installation
 
 ```sh
-pip install git+https://github.com/SynthesisLab/gpoe.git
+pip install git+https://github.com/SynthesisLab/grape.git
 ```
 
 ## Example
@@ -75,10 +83,25 @@ target_type: str = "int"
 skip_exceptions: set = {OverflowError}
 ```
 
-Then you can run:
+Then you can run all the commands you like with this DSL.
+
+## Pruning
+
+Given a domain specific language (DSL), the goal of this tool is to automatically find the semantically redundant programs.
+
+Take for example: ``x, -x, - (-x)``, ``- (-x)`` is redundant since it evaluates to ``x`` whatever the ``x`` value.
+
+This tool offers automatically finding these redundancies by evaluating the programs.
+It works by enumerating program by increasing size until a maximum target size, each enumerated program is evaluated on sampled inputs.
+The evaluation of a program on the set of inputs is its characteristic sequence, two programs that have the same characteristic sequences are redundant, therefore only the smallest program is kept.
+
+Currently, this redundant information is compiled by the tool to produce:
+
+- a deterministic bottom-up tree automaton, which can trivially be converted into a context-free grammar for example;
+- a set of program rewrites
 
 ```sh
-python -m gpoe dsl.py --size 5 --samples 300 -o grammar.txt
+grape-prune dsl.py --size 5 --samples 50
 ```
 
 The output I have on my machine is the following:
@@ -130,9 +153,9 @@ This table compares the number of programs in the three different languages for 
 These are the relative number of programs.
 Therefore the automaton contains up to size 5 ``38.43%`` of all the programs in the naive language, and ``72.62%`` of all the programs in the language with commutativity pruned.
 
-## How it works
+### How it works
 
-### Step 1
+#### Step 1
 
 First, we load your DSL as a python file and look for the following variables:
 
@@ -143,7 +166,7 @@ target_type (optional)
 skip_exceptions (optional)
 ```
 
-#### Sample Dict
+##### Sample Dict
 
 The sampling dictionary maps each type to a function taking no argument to sample elements of this type.
 By default, the tool aims to sample different inputs, but will stop if it fails after a number of tries.
@@ -151,34 +174,34 @@ The more types that can be sampled the more properties can be checked.
 
 Be aware, that if your sampling depends on a pseudo random number generator, then you probably want to seed it as to get reproducible results.
 
-#### DSL
+##### DSL
 
 This objects describes for each primitive a tuple containing its type and its semantic.
 Constants can be directly given, so there is no way currently to have functions with no arguments (that actually trigger a call).
 
-#### Target Type
+##### Target Type
 
 Instead of generating everything and anything that can be generated given your DSL, you target a specific type.
 Be aware that it must be a base type (no sum type, no function, no polymorphic).
 It reduces the space of research so it can speed up the process and gives you better results.
 
-#### Skip Exceptions
+##### Skip Exceptions
 
 It may occur that your code triggers some exceptions during executions, they will stop the execution of the process.
 Instead, the tool will catch exceptions given in this set, the program will return ``None`` as output instead when such an exception is triggered but the tool will continue.
 
-### Step 2
+#### Step 2
 
 The tool samples inputs for all the types sampler provided.
 
-### Step 3
+#### Step 3
 
 The tool checks for commutativity.
 This check must be done manually since the automaton model used cannot order trees, it cannot forbid a+b if b+a was generated, this would imply that you can order a and b.
 Therefore we check for it manually, and approximate it under something a bit less powerful but still captures a part of commutativity.
 Let us take ``+`` which is commutative, instead we order programs based on the last primitive used (the root of the trees), only ``+ t_a t_b`` where ``t_a`` <= ``t_b`` are allowed and ``t_a``, ``t_b`` are programs/trees with functions ``a``, ``b`` as their root.
 
-### Step 4
+#### Step 4
 
 The tool generate a pruned grammar based on commutativity constraints since they are fast to find and prune away a lot of programs.
 This is helpful to speed-up this part where we enumerate programs of increasing size.
@@ -186,7 +209,7 @@ Evaluating a program on all the sampled inputs produce a set of outputs, this is
 For each program enumerated, it is evaluated, if its characteristic sequence is the same as another previously enumerated program then it is discarded because those two programs are semantically equivalent.
 Since our enumeration is done in a bottom-up manner, all expansions of redundant programs are not even considered.
 
-### Step 5
+#### Step 5
 
 We build an automaton from the enumerated programs that were kept.
 We found that building from programs kept is way faster than using automata product and forbidding programs.
@@ -194,7 +217,7 @@ Note that the language described by the automaton is an over approximation.
 Since the automaton needs to be valid for any number of variables number and types, then all variables of the same types are merged, and thus some programs like ``x - x`` which were pruned must be present in the language described in the automaton, as ``x1 - x0`` may be an interesting program.
 This automaton describes a language from programs up to a fixed size.
 
-### Step 6
+#### Step 6
 
 This step is done only if the flag ``--no-loop`` is not given.
 We now extend the automaton to make it work for any size of programs.
@@ -205,7 +228,7 @@ There are multiple such windows, by default the tool chooses the first one which
 The flag ``--optimize`` chooses the most constrained window, that is the most restrictive one, at the cost of slower extension.
 The resulting automaton is reduced then minimized.
 
-### Step 7
+#### Step 7
 
 Now we check that the automaton obtained is consistent:
 
@@ -214,6 +237,23 @@ Now we check that the automaton obtained is consistent:
 - all type variants of every primitives of the DSL are present and used by the automaton
 
 If any of these conditions is not respected then a warning is printed ot the user as this may be intentional.
+
+### Additional Notes
+
+For the ``size`` parameter:
+
+- if it is too small you won't get all your primitives in the automaton because the max size was too small, basically for a primitive of arity ``k`` to be in the automaton, the minimal size must be ``k+1``.
+- gains decrease with increased size, and time taken increases exponentially.
+- there are some effects with ``size`` such that you can get gains that are not monotone due to the fact that very few redundant programs have been added, in that case try going to one size larger, usually you get back your improvements.
+
+For the ``--optimize`` flag:
+
+- on our hardware, recent i7, it was 10 times as slow.
+- on the provided example case, it provided no improvement, even if it did we expect the improvements to be minimal.
+
+For the ``--no-loop`` flag:
+
+- if you compare the number of programs up to the max size with and without the flag, you will observe that without ``no-loop`` there are slightly more programs because of the loops. It is not a bug, it is due that some programs are not of the maximum size and needs to loop, therefore producing new redundant programs because of the loops within the size bound.
 
 ## Type System
 
@@ -239,31 +279,14 @@ t1 | t2  -> t1 | t2
 'a [ t1 | t2 ] -> 'a
 ```
 
-## Additional Notes
+## GRAPE Format
 
-For the ``size`` parameter:
-
-- if it is too small you won't get all your primitives in the automaton because the max size was too small, basically for a primitive of arity ``k`` to be in the automaton, the minimal size must be ``k+1``.
-- gains decrease with increased size, and time taken increases exponentially.
-- there are some effects with ``size`` such that you can get gains that are not monotone due to the fact that very few redundant programs have been added, in that case try going to one size larger, usually you get back your improvements.
-
-For the ``--optimize`` flag:
-
-- on our hardware, recent i7, it was 10 times as slow.
-- on the provided example case, it provided no improvement, even if it did we expect the improvements to be minimal.
-
-For the ``--no-loop`` flag:
-
-- if you compare the number of programs up to the max size with and without the flag, you will observe that without ``no-loop`` there are slightly more programs because of the loops. It is not a bug, it is due that some programs are not of the maximum size and needs to loop, therefore producing new redundant programs because of the loops within the size bound.
-
-## Output Format
-
-The output format for the deterministic tree automaton is the following:
+The grape format for the deterministic tree automaton is the following:
 
 ```text
 finals:S0,S1
-terminals:+,1,var0
-nonterminals:S0,S1
+letters:+,1,var0
+states:S0,S1
 S0,+,S0,S0
 S0,+,S1,S0
 S0,+,S1,S1
@@ -272,8 +295,8 @@ S0,var0
 ```
 
 The first line has the prefix ``finals:`` and contains comma separated the list of final states of the automaton.
-The second line has the prefix ``terminals:`` and contains comma separated the list of DSL primitives used, that is the alphabet of the automaton.
-The third line has the prefix ``nonterminals:`` and contains comma separated the list of states of the automaton.
+The second line has the prefix ``letters:`` and contains comma separated the list of DSL primitives used, that is the alphabet of the automaton.
+The third line has the prefix ``states:`` and contains comma separated the list of states of the automaton.
 Then on each line is defined a transition of the automaton.
 First, let us look at:
 

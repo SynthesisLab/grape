@@ -1,11 +1,12 @@
 from typing import Generator, TypeVar
-from gpoe.evaluator import Evaluator
-from gpoe.program import Function, Primitive, Program, Variable
-import gpoe.types as types
+from grape.dsl import DSL
+from grape.evaluator import Evaluator
+from grape.program import Function, Primitive, Program, Variable
+import grape.types as types
 
 
 def find_approximate_constraints(
-    dsl: dict[str, tuple[str, callable]],
+    dsl: DSL,
     evaluator: Evaluator,
 ) -> list[tuple[Program, Program, str]]:
     constraints = __find_commutativity__(dsl, evaluator)
@@ -103,12 +104,12 @@ def __add_commutative_constraints__(
 
 
 def __find_commutativity__(
-    dsl: dict[str, tuple[str, callable]],
+    dsl: DSL,
     evaluator: Evaluator,
 ) -> list[tuple[Program, Program, str]]:
     constraints = []
     commutatives = []
-    for prim, (stype, _) in dsl.items():
+    for prim, (stype, _) in dsl.primitives.items():
         args = types.arguments(stype)
         if len(args) < 2:
             continue
@@ -132,7 +133,9 @@ def __find_commutativity__(
             variant = Function(Primitive(prim), new_args)
             if evaluator.eval(variant, stype) is not None:
                 commutatives.append(prim)
-                constraints += __add_commutative_constraints__(dsl, prim, new_args)
+                constraints += __add_commutative_constraints__(
+                    dsl.primitives, prim, new_args
+                )
     if commutatives:
         print("commutatives:", ", ".join(commutatives))
     return constraints
