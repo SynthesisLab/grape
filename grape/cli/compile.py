@@ -7,6 +7,7 @@ from grape.automaton_generator import (
     size_constraint,
 )
 from grape.cli import dsl_loader
+from grape.program import Primitive, Variable
 
 
 def parse_args():
@@ -96,6 +97,10 @@ def main():
 
         grammar = grammar.map_states(get_state)
     types.check_automaton(grammar, dsl, type_req)
+    args_type = types.arguments(type_req)
+    grammar = grammar.map_alphabet(
+        lambda x: Primitive(f"var_{args_type[x.no]}") if isinstance(x, Variable) else x
+    )
     dsl.check_all_variants_present(grammar)
     grammar = dsl.merge_type_variants(grammar)
     dsl.check_all_primitives_present(grammar)
