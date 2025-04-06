@@ -36,6 +36,35 @@ class DSL:
     def semantic(self, primitive: str) -> Any:
         return self.eval[primitive]
 
+    def get_state_types(self, automaton: DFTA[T, str | Program]) -> dict[T, str]:
+        state_to_type = {}
+        elements = list(automaton.rules.items())
+        while elements:
+            (P, args), dst = elements.pop()
+            if str(P).startswith("var_"):
+                Ptype = str(P)[len("var_") :]
+            else:
+                base_Ptype = self.original_primitives.get(str(P))
+                all_possibles = types.all_variants(base_Ptype)
+                for i, arg_state in enumerate(args):
+                    if arg_state not in state_to_type:
+                        continue
+                    all_possibles = [
+                        t
+                        for t in all_possibles
+                        if state_to_type[arg_state] == types.arguments(t)[i]
+                    ]
+                if len(all_possibles) > 1:
+                    elements.insert(0, ((P, args), dst))
+                    continue
+                else:
+                    Ptype = all_possibles.pop()
+            if dst in state_to_type:
+                assert state_to_type[dst] == types.return_type(Ptype)
+            else:
+                state_to_type[dst] = types.return_type(Ptype)
+        return state_to_type
+
     def check_all_variants_present(self, grammar: DFTA[Any, Program]) -> bool:
         missing = set(self.primitives.keys()).difference(
             set(map(str, grammar.alphabet))
