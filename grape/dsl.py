@@ -13,18 +13,21 @@ TYPE_SEP = "|@>"
 class DSL:
     def __init__(self, dsl: dict[str, tuple[str, callable]]):
         self.primitives: dict[str, tuple[str, callable]] = {}
+        self.original_primitives: dict[str, str] = {}
         self.eval: dict[str, callable] = {}
         self.to_merge = {}
 
         for name, (stype, fn) in sorted(dsl.items()):
-            self.eval[name] = fn
+            self.original_primitives[name] = stype
             variants = types.all_variants(stype)
             if len(variants) == 1:
                 self.primitives[name] = (stype, fn)
+                self.eval[name] = fn
             else:
                 for sversion in variants:
                     new_name = f"{name}{TYPE_SEP}{sversion}"
                     self.primitives[new_name] = (sversion, fn)
+                    self.eval[new_name] = fn
                     self.to_merge[Primitive(new_name)] = Primitive(name)
 
     def apply(self, primitive: str, *args: Any) -> Any:
