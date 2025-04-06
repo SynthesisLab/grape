@@ -4,10 +4,11 @@ This tools aims to make it easy to manipulate grammars for program synthesis.
 
 It has the following features:
 
-- ``grape-compile``: produce a grammar from a basic DSL
-- ``grape-prune``: produce a pruned grammar by removing redundant programs
-- ``grape-count``: count the number of programs in a grammar up to a specific size
+- ``grape-compile``: produce a grammar from a basic DSL with size or/and depth constraints
 - ``grape-convert``: convert a grammar into another format
+- ``grape-count``: count the number of programs in a grammar up to a specific size
+- ``grape-prune``: produce a pruned grammar by removing redundant programs
+- ``grape-specialize``: specialize a generic grammar to a specific type request
 
 planned:
 
@@ -16,8 +17,9 @@ planned:
 
 Supported grammar formats:
 
-- ``.grape``: our own format
-- ``.ebnf``: EBNF format
+- ``.grape``: our own format, the advantage is that there is only one special character ``,`` and it is trivial to parse
+- ``.ebnf``: EBNF format, the subset for bottom-up tree automata (each rule must start with a terminal)
+- ``.gram``: (planned) Lark format
 
 **Table of contents**:
 <!-- TOC START -->
