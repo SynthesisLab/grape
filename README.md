@@ -7,10 +7,10 @@ It has the following features:
 - ``grape-compile``: produce a grammar from a basic DSL
 - ``grape-prune``: produce a pruned grammar by removing redundant programs
 - ``grape-count``: count the number of programs in a grammar up to a specific size
+- ``grape-convert``: convert a grammar into another format
 
 planned:
 
-- ``grape-convert``: convert a grammar into another format
 - ``grape-union``: produce the union of two grammars when reading the same letter
 - ``grape-intersection``: produce the intersection of two grammars when reading the same letter
 
