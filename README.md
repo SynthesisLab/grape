@@ -17,8 +17,7 @@ planned:
 Supported grammar formats:
 
 - ``.grape``: our own format
-- ``.bnf``: (planned) BNF format
-- ``.ebnf``: (planned) EBNF format
+- ``.ebnf``: EBNF format
 
 **Table of contents**:
 <!-- TOC START -->

@@ -5,7 +5,6 @@ from grape.automaton.tree_automaton import DFTA
 
 class AutomatonFormat(StrEnum):
     EBNF = ".ebnf"
-    BNF = ".bnf"
     GRAPE = ".grape"
 
     @staticmethod
@@ -35,6 +34,20 @@ def dump_automaton_to_str(dfta: DFTA, format: AutomatonFormat) -> str:
             lines.append(f"{dst},{P}{add}")
 
         return s + "\n".join(sorted(lines))
+    elif format == AutomatonFormat.EBNF:
+        elements = []
+        dfta.refresh_reversed_rules()
+        for dst, derivations in dfta.reversed_rules.items():
+            s = f"{dst.replace('=', '_')} = "
+            s_elements = []
+            for P, args in derivations:
+                end = ", ".join(map(lambda x: str(x).replace("=", "_"), args))
+                if len(args):
+                    end = " , " + end
+                s_elements.append(f'"{P}"{end}')
+            elements.append(s + " | ".join(s_elements) + ";")
+        return "\n".join(elements)
+
     else:
         raise ValueError(f"unsupported format:{format}")
 
@@ -76,5 +89,35 @@ def load_automaton_from_str(data: str, format: AutomatonFormat) -> DFTA[str, str
                 )
             rules[(letter, args)] = dst
         return DFTA(rules, set(finals))
+    elif format == AutomatonFormat.EBNF:
+        terminal_chars = ['"', "'"]
+        elements = data.split(";")
+        rules = {}
+        finals = set()
+        for element in elements:
+            things = [
+                x.strip()
+                for x in element.replace("\n", " ").split("=")
+                if len(x.strip()) > 0
+            ]
+            if len(things) == 0:
+                continue
+            dst = things.pop(0).strip()
+            finals.add(dst)
+            for sub_rule in things.pop().split("|"):
+                sub_elements = [
+                    x.strip() for x in sub_rule.split(",") if len(x.strip()) > 0
+                ]
+                terminal = sub_elements.pop(0).strip()
+                assert any(
+                    terminal.startswith(c) and terminal.endswith(c)
+                    for c in terminal_chars
+                ), (
+                    f"error parsing rule: {element}\n\twhile handling:{sub_rule}\n\t\t<<{terminal}>> could not be parsed as a terminal"
+                )
+                args = tuple(map(lambda x: x.strip(), sub_elements))
+                rules[(terminal[1:-1], args)] = dst
+        return DFTA(rules, finals)
+
     else:
         raise ValueError(f"unsupported format:{format}")
