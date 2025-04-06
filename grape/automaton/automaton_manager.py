@@ -36,12 +36,13 @@ def dump_automaton_to_str(dfta: DFTA, format: AutomatonFormat) -> str:
         return s + "\n".join(sorted(lines))
     elif format == AutomatonFormat.EBNF:
         elements = []
+        dfta = dfta.map_states(lambda x: str(x).replace("=", "_").replace("-", "_"))
         dfta.refresh_reversed_rules()
         for dst, derivations in dfta.reversed_rules.items():
-            s = f"{dst.replace('=', '_')} = "
+            s = f"{dst} = "
             s_elements = []
             for P, args in derivations:
-                end = ", ".join(map(lambda x: str(x).replace("=", "_"), args))
+                end = ", ".join(map(str, args))
                 if len(args):
                     end = " , " + end
                 s_elements.append(f'"{P}"{end}')
@@ -90,21 +91,20 @@ def load_automaton_from_str(data: str, format: AutomatonFormat) -> DFTA[str, str
             rules[(letter, args)] = dst
         return DFTA(rules, set(finals))
     elif format == AutomatonFormat.EBNF:
+        data = data.replace("\n", " ")
         terminal_chars = ['"', "'"]
         elements = data.split(";")
         rules = {}
         finals = set()
         for element in elements:
-            things = [
-                x.strip()
-                for x in element.replace("\n", " ").split("=")
-                if len(x.strip()) > 0
+            rules_for_nonterminals = [
+                x.strip() for x in element.split("=") if len(x.strip()) > 0
             ]
-            if len(things) == 0:
+            if len(rules_for_nonterminals) <= 1:
                 continue
-            dst = things.pop(0).strip()
+            dst = rules_for_nonterminals.pop(0).strip()
             finals.add(dst)
-            for sub_rule in things.pop().split("|"):
+            for sub_rule in "=".join(rules_for_nonterminals).split("|"):
                 sub_elements = [
                     x.strip() for x in sub_rule.split(",") if len(x.strip()) > 0
                 ]
