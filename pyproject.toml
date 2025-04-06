@@ -13,3 +13,4 @@ dependencies = [
 grape-prune = "grape.cli.prune:main"
 grape-count = "grape.cli.count:main"
 grape-compile = "grape.cli.compile:main"
+grape-specialize = "grape.cli.specialize:main"
