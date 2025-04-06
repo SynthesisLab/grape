@@ -285,13 +285,13 @@ The grape format for the deterministic tree automaton is the following:
 
 ```text
 finals:S0,S1
-letters:+,1,var0
+letters:+,1,var_int
 states:S0,S1
 S0,+,S0,S0
 S0,+,S1,S0
 S0,+,S1,S1
 S1,1
-S0,var0
+S0,var_int
 ```
 
 The first line has the prefix ``finals:`` and contains comma separated the list of final states of the automaton.
@@ -314,5 +314,5 @@ S1,1
 S1 <- 1
 ```
 
-If you want to extend the automaton for more variables, it is quite straightforward, for every rule ``dst,var0`` add a rule ``dst,vari``.
+If you want to extend the automaton for more variables, it is quite straightforward, for every rule ``dst,var_X`` where ``X`` is the type of your variable add a rule ``dst,vari``.
 Note that if you have variables of different types, you should od this with the variable of the respecting type.

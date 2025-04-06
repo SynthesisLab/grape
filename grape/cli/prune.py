@@ -3,6 +3,7 @@ from tqdm import tqdm
 from grape import types
 from grape.automaton.automaton_manager import dump_automaton_to_file
 from grape.cli import dsl_loader
+from grape.program import Primitive, Variable
 from grape.pruning.approximate_constraint_finder import find_approximate_constraints
 from grape.evaluator import Evaluator
 from grape.pruning.regular_constraint_finder import find_regular_constraints
@@ -100,6 +101,10 @@ def main():
 
     type_req = allowed[0][-1]
     types.check_automaton(grammar, dsl, type_req)
+    args_type = types.arguments(type_req)
+    grammar = grammar.map_alphabet(
+        lambda x: Primitive(f"var_{args_type[x.no]}") if isinstance(x, Variable) else x
+    )
     dsl.check_all_variants_present(grammar)
     grammar = dsl.merge_type_variants(grammar)
     dsl.check_all_primitives_present(grammar)
