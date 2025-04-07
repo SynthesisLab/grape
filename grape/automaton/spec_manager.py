@@ -3,7 +3,7 @@ from typing import TypeVar, overload
 from grape import types
 from grape.automaton.tree_automaton import DFTA
 from grape.dsl import DSL
-from grape.program import Program, Variable
+from grape.program import Primitive, Program, Variable
 
 
 T = TypeVar("T")
@@ -55,3 +55,44 @@ def specialize(
         return DFTA(
             new_rules, set(s for s in grammar.finals if state_to_type[s] == rtype)
         )
+
+
+@overload
+def despecialize(grammar: DFTA[T, str], type_req: str) -> DFTA[T, str]:
+    pass
+
+
+@overload
+def despecialize(grammar: DFTA[T, Program], type_req: str) -> DFTA[T, Program]:
+    pass
+
+
+def despecialize(
+    grammar: DFTA[T, str] | DFTA[T, Program], type_req: str
+) -> DFTA[T, str] | DFTA[T, Program]:
+    arg_types = types.arguments(type_req)
+    vars2types = {i: arg_type for i, arg_type in enumerate(arg_types)}
+    if isinstance(list(grammar.alphabet)[0], str):
+
+        def update(letter: str):
+            if letter.startswith("var"):
+                return f"var_{vars2types[int(letter[len('var') :])]}"
+            else:
+                return letter
+    else:
+
+        def update(letter: Program):
+            if isinstance(letter, Variable):
+                return Primitive(f"var_{vars2types[letter.no]}")
+            else:
+                return letter
+
+    out = grammar.map_alphabet(update)
+    states = set()
+    def mapping(x):
+        states.add(x)
+        return x
+    grammar.map_states(mapping)
+    out.finals = states
+    out.reduce()
+    return out
