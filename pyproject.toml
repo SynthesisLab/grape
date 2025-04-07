@@ -10,8 +10,9 @@ dependencies = [
 
 
 [project.scripts]
-grape-prune = "grape.cli.prune:main"
-grape-count = "grape.cli.count:main"
 grape-compile = "grape.cli.compile:main"
-grape-specialize = "grape.cli.specialize:main"
 grape-convert = "grape.cli.convert:main"
+grape-count = "grape.cli.count:main"
+grape-despecialize = "grape.cli.despecialize:main"
+grape-prune = "grape.cli.prune:main"
+grape-specialize = "grape.cli.specialize:main"

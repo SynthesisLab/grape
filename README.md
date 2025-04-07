@@ -9,6 +9,7 @@ It has the following features:
 - ``grape-count``: count the number of programs in a grammar up to a specific size
 - ``grape-prune``: produce a pruned grammar by removing redundant programs
 - ``grape-specialize``: specialize a generic grammar to a specific type request
+- ``grape-despecialize``: despecialize a generic grammar from a specific type request
 
 planned:
 
