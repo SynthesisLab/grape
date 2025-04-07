@@ -82,7 +82,9 @@ class DSL:
         return not missing
 
     def check_all_primitives_present(self, grammar: DFTA[Any, Program]) -> bool:
-        missing = set(self.eval.keys()).difference(set(map(str, grammar.alphabet)))
+        missing = set(self.original_primitives.keys()).difference(
+            set(map(str, grammar.alphabet))
+        )
         if missing:
             print(
                 f"[warning] the following primitives are not present in the grammar: {', '.join(missing)}",
