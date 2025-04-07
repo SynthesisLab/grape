@@ -4,7 +4,6 @@ from grape import types
 from grape.automaton.automaton_manager import dump_automaton_to_file
 from grape.cli import dsl_loader
 from grape.program import Primitive, Variable
-from grape.pruning.approximate_constraint_finder import find_approximate_constraints
 from grape.evaluator import Evaluator
 from grape.pruning.regular_constraint_finder import find_regular_constraints
 
@@ -77,6 +76,12 @@ def parse_args():
         action="store_true",
         help="the grammar will produce programs only up to the size specified",
     )
+    parser.add_argument(
+        "--from",
+        dest="automaton",
+        type=str,
+        help="your starting automaton file",
+    )
 
     return parser.parse_args()
 
@@ -87,14 +92,14 @@ def main():
         dsl_loader.load_python_file(args.dsl)
     )
     inputs = sample_inputs(args.samples, sample_dict, equal_dict)
+
     evaluator = Evaluator(dsl, inputs, equal_dict, skip_exceptions)
-    approx_constraints = find_approximate_constraints(dsl, evaluator)
     grammar, allowed = find_regular_constraints(
         dsl,
         evaluator,
         args.size,
         target_type,
-        approx_constraints,
+        args.automaton,
         args.optimize,
         args.no_loop,
     )

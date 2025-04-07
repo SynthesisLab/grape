@@ -1,4 +1,4 @@
-from typing import Any, TypeVar
+from typing import Any, TypeVar, overload
 import sys
 from grape import types
 from grape.automaton.tree_automaton import DFTA
@@ -25,10 +25,13 @@ class DSL:
                 self.eval[name] = fn
             else:
                 for sversion in variants:
-                    new_name = f"{name}{TYPE_SEP}{sversion}"
+                    new_name = self.__name_variant__(name, sversion)
                     self.primitives[new_name] = (sversion, fn)
                     self.eval[new_name] = fn
                     self.to_merge[Primitive(new_name)] = Primitive(name)
+
+    def __name_variant__(self, primitive: str, str_type: str) -> str:
+        return f"{primitive}{TYPE_SEP}{str_type}"
 
     def max_arity(self) -> int:
         return max(len(types.arguments(t)) for t, _ in self.primitives.values())
@@ -40,6 +43,9 @@ class DSL:
         return self.eval[primitive]
 
     def get_state_types(self, automaton: DFTA[T, str | Program]) -> dict[T, str]:
+        """
+        Assumes types variants are not present.
+        """
         state_to_type = {}
         elements = list(automaton.rules.items())
         while elements:
@@ -67,6 +73,52 @@ class DSL:
             else:
                 state_to_type[dst] = types.return_type(Ptype)
         return state_to_type
+
+    @overload
+    def map_to_variants(self, automaton: DFTA[T, Program]) -> DFTA[T, Program]:
+        pass
+
+    @overload
+    def map_to_variants(self, automaton: DFTA[T, str]) -> DFTA[T, str]:
+        pass
+
+    def map_to_variants(
+        self, automaton: DFTA[T, Program] | DFTA[T, str]
+    ) -> DFTA[T, Program] | DFTA[T, str]:
+        """
+        Produce the DFTA with the right type variants.
+        """
+        state2type = self.get_state_types(automaton)
+        if isinstance(list(automaton.alphabet)[0], str):
+
+            def make(letter: str):
+                return letter
+        else:
+
+            def make(letter: str):
+                return Primitive(letter)
+
+        new_rules = {}
+
+        for (P, args), dst in automaton.rules.items():
+            str_type = self.original_primitives.get(str(P))
+            variants = [] if str_type is None else types.all_variants(str_type)
+            if len(variants) <= 1:
+                new_rules[(P, args)] = dst
+            else:
+                variants = [
+                    t for t in variants if types.return_type(t) == state2type[dst]
+                ]
+                for i, arg_state in enumerate(args):
+                    variants = [
+                        t
+                        for t in variants
+                        if types.arguments(t)[i] == state2type[arg_state]
+                    ]
+                assert len(variants) == 1
+                newP = make(self.__name_variant__(str(P), variants.pop()))
+                new_rules[(newP, args)] = dst
+        return DFTA(new_rules, set(list(automaton.finals)))
 
     def check_all_variants_present(self, grammar: DFTA[Any, Program]) -> bool:
         missing = set(self.primitives.keys()).difference(
