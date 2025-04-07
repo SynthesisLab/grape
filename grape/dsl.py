@@ -30,6 +30,9 @@ class DSL:
                     self.eval[new_name] = fn
                     self.to_merge[Primitive(new_name)] = Primitive(name)
 
+    def max_arity(self) -> int:
+        return max(len(types.arguments(t)) for t, _ in self.primitives.values())
+
     def apply(self, primitive: str, *args: Any) -> Any:
         return self.eval[primitive](*args)
 
