@@ -75,25 +75,53 @@ def find_regular_constraints(
     print(f"\tcommutativity pruned: {ntrees:.2e} ({ntrees / basen:.2%})")
     assert basen >= ntrees
     enumerator = Enumerator(grammar)
+
+    expected_trees = grammar.trees_by_size(max_size)
+    original_expected_trees = base_grammar.trees_by_size(max_size)
+    max_arity = dsl.max_arity()
+
+    def estimate_total(size: int) -> tuple[int, float]:
+        min_size = max(1, size - max_arity)
+        ratio = sum(
+            enumerator.count_programs_at_size(s) / expected_trees[s]
+            for s in range(min_size, size + 1)
+        ) / (size - min_size + 1)
+        total = sum(enumerator.count_programs_at_size(i) for i in range(1, size + 1))
+        total += int(
+            sum(expected_trees[s] * ratio for s in range(size + 1, max_size + 1))
+        )
+        ratio = sum(
+            enumerator.count_programs_at_size(s) / original_expected_trees[s]
+            for s in range(min_size, size + 1)
+        ) / (size - min_size + 1)
+
+        return total, ratio
+
     # Generate all programs until some size
-    pbar = tqdm(total=max_size, smoothing=1)
+    pbar = tqdm(total=ntrees)
     pbar.set_description_str("obs. equiv.")
     gen = enumerator.enumerate_until_size(max_size + 1)
     program = next(gen)
     evaluator.eval(program, type_req)
     should_keep = True
+    last_size = 1
     try:
-        last_size = 1
+        n = 0
         while True:
             program = gen.send(should_keep)
             representative = evaluator.eval(program, type_req)
             should_keep = representative is None
-            if last_size < enumerator.current_size:
-                pbar.update()
-                last_size += 1
+            n += 1
+            if n & 15 == 0:
+                pbar.update(16)
+                if enumerator.current_size != last_size:
+                    pbar.total, ratio = estimate_total(last_size)
+                    pbar.set_postfix_str(f"est. ratio unique programs:{ratio:.0%}")
+                    last_size += 1
+                n = 0
     except StopIteration:
         pass
-    pbar.update(max_size - last_size + 1)
+    pbar.update(n)
     pbar.close()
     evaluator.free_memory()
     reduced_grammar, t = grammar_from_memory(
