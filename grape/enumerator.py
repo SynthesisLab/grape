@@ -12,6 +12,9 @@ class Enumerator:
         self.states = sorted(self.grammar.states)
         self.__setup__()
 
+    def count_programs_at_size(self, size: int) -> int:
+        return sum(len(self.memory[state][size]) for state in self.memory)
+
     def __setup__(self) -> None:
         self.var_types = {
             state
