@@ -345,6 +345,73 @@ class DFTA(Generic[U, V]):
         """
         return self.trees_by_size(size)[size]
 
+    def max_arity(self) -> int:
+        return max(len(args) for _, args in self.rules)
+
+    def is_unbounded(self) -> bool:
+        """
+        Returns true if the grammar produces unbounded programs.
+        """
+        reachable_from: dict[U, set[V]] = defaultdict(set)
+        for (P, args), dst in self.rules.items():
+            reachable_from[dst].update(args)
+
+        updated = True
+        while updated:
+            updated = False
+            for dst, reachables in reachable_from.copy().items():
+                before = len(reachables)
+                for S in reachables.copy():
+                    if dst in reachable_from[S]:
+                        return True
+                    reachables.update(reachable_from[S])
+                if len(reachables) != before:
+                    updated = True
+        return False
+
+    def compute_max_size_and_depth(self) -> tuple[int, int]:
+        """
+        Return max size and max depth
+        """
+        # Compute transitive closure
+        reachable_from: dict[U, set[V]] = defaultdict(set)
+        for (P, args), dst in self.rules.items():
+            reachable_from[dst].update(args)
+
+        updated = True
+        while updated:
+            updated = False
+            for dst, reachables in reachable_from.copy().items():
+                before = len(reachables)
+                for S in reachables.copy():
+                    reachables.update(reachable_from[S])
+                if len(reachables) != before:
+                    updated = True
+        max_size_by_state: dict[U, int] = {state: 0 for state in self.states}
+        max_depth_by_state: dict[U, int] = {state: 0 for state in self.states}
+        for (P, args), dst in self.rules.items():
+            if len(args) == 0:
+                max_size_by_state[dst] = 1
+                max_depth_by_state[dst] = 1
+        updated = True
+        while updated:
+            previous_size = max_size_by_state.copy()
+            previous_depth = max_depth_by_state.copy()
+            for (P, args), dst in self.rules.items():
+                if len(args) > 0 and all(max_size_by_state[arg] > 0 for arg in args):
+                    size = sum(max_size_by_state[arg] for arg in args) + 1
+                    depth = max(max_depth_by_state[arg] for arg in args) + 1
+                    max_size_by_state[dst] = max(size, max_size_by_state[dst])
+                    max_depth_by_state[dst] = max(depth, max_depth_by_state[dst])
+            updated = (
+                previous_size != max_size_by_state
+                or previous_depth != max_depth_by_state
+            )
+
+        return max(max_size_by_state[f] for f in self.finals), max(
+            max_depth_by_state[f] for f in self.finals
+        )
+
     def __str__(self) -> str:
         s = "finals:" + ", ".join(sorted(map(str, self.finals))) + "\n"
         s += "letters:" + ", ".join(sorted(map(str, self.alphabet))) + "\n"
