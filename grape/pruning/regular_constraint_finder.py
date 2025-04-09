@@ -125,7 +125,7 @@ def find_regular_constraints(
     pbar.close()
     evaluator.free_memory()
     reduced_grammar, t = grammar_from_memory(
-        dsl.primitives, enumerator.memory, type_req, grammar.finals, optimize, no_loop
+        dsl, enumerator.memory, type_req, grammar.finals, optimize, no_loop
     )
     print("at size:", max_size)
     print(
