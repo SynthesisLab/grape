@@ -43,10 +43,10 @@ def main():
         dfta = specialize(dfta, args.request, dsl)
         dfta.reduce()
     size = int(args.size)
-    counts = dfta.trees_by_size(size)
-    for size in sorted(counts):
-        count = counts[size]
-        print(f"size {size}: {count:.2e}")
+    cumulative = 0
+    for size, count in dfta.stream_trees_by_size(size):
+        cumulative += count
+        print(f"size {size}: {count:.2e} cumulative: {cumulative:.2e}")
 
 
 if __name__ == "__main__":

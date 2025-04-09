@@ -2,6 +2,7 @@ from collections import defaultdict
 from typing import (
     Callable,
     Dict,
+    Generator,
     Generic,
     List,
     Literal,
@@ -314,9 +315,10 @@ class DFTA(Generic[U, V]):
             self.finals.copy(),
         )
 
-    def trees_by_size(self, size: int) -> dict[int, int]:
+    def stream_trees_by_size(self, size: int) -> Generator[tuple[int, int], None, None]:
         """
         Return the number of trees produced of all sizes until the given size (included).
+        stream (size, number of trees)
         """
 
         states = self.states
@@ -334,10 +336,13 @@ class DFTA(Generic[U, V]):
                             for arg_size, arg in zip(partition, args):
                                 total *= count[arg][arg_size]
                             count[state][csize] += total
-        return {
-            targets: sum(count[state][targets] for state in self.finals)
-            for targets in range(1, size + 1)
-        }
+            yield csize, sum(count[state][csize] for state in self.finals)
+
+    def trees_by_size(self, size: int) -> dict[int, int]:
+        """
+        Return the number of trees produced of all sizes until the given size (included).
+        """
+        return {size: count for size, count in self.stream_trees_by_size(size)}
 
     def trees_at_size(self, size: int) -> int:
         """
