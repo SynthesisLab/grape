@@ -6,6 +6,7 @@ from grape.automaton.tree_automaton import DFTA
 class AutomatonFormat(StrEnum):
     EBNF = ".ebnf"
     GRAPE = ".grape"
+    LARK = ".lark"
 
     @staticmethod
     def from_str(content: str) -> "AutomatonFormat":
@@ -43,10 +44,24 @@ def dump_automaton_to_str(dfta: DFTA, format: AutomatonFormat) -> str:
             s_elements = []
             for P, args in derivations:
                 end = ", ".join(map(str, args))
-                if len(args):
+                if len(args) > 0:
                     end = " , " + end
                 s_elements.append(f'"{P}"{end}')
             elements.append(s + " | ".join(s_elements) + ";")
+        return "\n".join(elements)
+    elif format == AutomatonFormat.LARK:
+        elements = []
+        dfta = dfta.map_states(lambda x: str(x).replace("=", "_").replace("-", "_"))
+        dfta.refresh_reversed_rules()
+        for dst, derivations in dfta.reversed_rules.items():
+            s = f"{dst} : "
+            s_elements = []
+            for P, args in derivations:
+                end = " ".join(map(str, args))
+                if len(args) > 0:
+                    end = " " + end
+                s_elements.append(f'"{P}"{end}')
+            elements.append(s + " | ".join(s_elements))
         return "\n".join(elements)
 
     else:
@@ -117,6 +132,70 @@ def load_automaton_from_str(data: str, format: AutomatonFormat) -> DFTA[str, str
                 )
                 args = tuple(map(lambda x: x.strip(), sub_elements))
                 rules[(terminal[1:-1], args)] = dst
+        return DFTA(rules, finals)
+    elif format == AutomatonFormat.LARK:
+        terminal_chars = ['"', "'"]
+        elements = data.splitlines()
+        rules = {}
+        finals = set()
+        last_state = None
+
+        def parse_terminal(content: str) -> int:
+            for i, c in enumerate(content):
+                if c in terminal_chars:
+                    return i + 1
+            return len(content)
+
+        def parse_rule(rule: str, state: str):
+            elements = rule.split(" ")
+            to_add = []
+            stack = []
+            while elements:
+                element = elements.pop(0).strip()
+                if len(element) == 0:
+                    continue
+                if any(element.startswith(letter) for letter in terminal_chars):
+                    end = parse_terminal(element[1:])
+                    stack.append(element[1:end])
+                    rest = element[end + 1 :].strip()
+                    if len(rest) > 0:
+                        elements.insert(0, rest)
+                elif element.startswith("..") and len(stack) > 0:
+                    other_terminal = element[3 : parse_terminal(element[3:])]
+                    previous = stack.pop()
+                    assert len(previous) == 1 and len(other_terminal) == 1, (
+                        f"cannot make range from '{previous}' to '{other_terminal}'"
+                    )
+                    for i in range(ord(previous), ord(other_terminal) + 1):
+                        to_add.append((chr(i), tuple()))
+                elif element == "|":
+                    to_add.append((stack[0], tuple(stack[1:])))
+                    stack.clear()
+                else:
+                    stack.append(element)
+            if len(stack) > 0:
+                to_add.append((stack[0], tuple(stack[1:])))
+
+            for key in to_add:
+                rules[key] = state
+
+        for element in elements:
+            element = element.strip()
+            if ":" in element:
+                # We are defining a new rule
+                parts = element.split(":")
+                state = parts[0].strip()
+                finals.add(state)
+                last_state = state
+                rule = ":".join(parts[1:])
+                parse_rule(rule, state)
+            elif element.startswith("|"):
+                # we are adding to the last rule
+                assert last_state is not None
+                parse_rule(element[1:], last_state)
+            else:
+                # skip
+                pass
         return DFTA(rules, finals)
 
     else:
