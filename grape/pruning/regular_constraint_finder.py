@@ -75,8 +75,8 @@ def find_regular_constraints(
         grammar = grammar_from_type_constraints_and_commutativity(
             dsl, type_req, [p[0] for p in approx_constraints]
         )
-        ntrees = grammar.trees_at_size(max_size)
-        basen = base_grammar.trees_at_size(max_size)
+        ntrees = grammar.trees_until_size(max_size)
+        basen = base_grammar.trees_until_size(max_size)
         assert basen >= ntrees
     else:
         base_grammar = load_automaton_from_file(base_automaton_file)
@@ -88,7 +88,7 @@ def find_regular_constraints(
             else Primitive(x)
         )
         grammar = base_grammar
-        ntrees = grammar.trees_at_size(max_size)
+        ntrees = grammar.trees_until_size(max_size)
 
     enumerator = Enumerator(grammar)
 
