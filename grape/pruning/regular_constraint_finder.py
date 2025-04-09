@@ -68,8 +68,8 @@ def find_regular_constraints(
     grammar = grammar_from_type_constraints_and_commutativity(
         dsl, type_req, [p[0] for p in approx_constraints]
     )
-    ntrees = sum(grammar.trees_by_size(max_size).values())
-    basen = sum(base_grammar.trees_by_size(max_size).values())
+    ntrees = grammar.trees_until_size(max_size)
+    basen = base_grammar.trees_until_size(max_size)
     print("at size:", max_size)
     print(f"\tno pruning: {basen:.2e}")
     print(f"\tcommutativity pruned: {ntrees:.2e} ({ntrees / basen:.2%})")

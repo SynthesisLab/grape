@@ -359,7 +359,7 @@ def grammar_from_memory(
                 relevant_dfta.rules[(old, ())] = dst
                 added.add((old, ()))
     relevant_dfta.refresh_reversed_rules()
-    n = sum(relevant_dfta.trees_by_size(max_size).values())
+    n = relevant_dfta.trees_until_size(max_size)
     from_enum = test(memory, relevant_dfta, max_size)
     total_programs = sum(
         sum(len(memory[state][s]) for state in memory) for s in range(1, max_size + 1)
@@ -379,18 +379,21 @@ def test(
 ) -> int:
     enum = Enumerator(dfta)
     gen = enum.enumerate_until_size(max_size + 1)
-    pbar = tqdm(total=max_size, desc="checking")
+    pbar = tqdm(total=dfta.trees_until_size(max_size), desc="checking")
     next(gen)
     size = 0
+    count = 0
     while True:
         try:
             gen.send(True)
-            if enum.current_size > size:
-                size += 1
-                pbar.update()
+            count += 1
+            if count & 15 == 0:
+                pbar.update(16)
+                count = 0
         except StopIteration:
             break
-
+    pbar.update(count)
+    pbar.close()
     new_memory_to_size = {}
     old_memory_to_size = {}
     total = 0

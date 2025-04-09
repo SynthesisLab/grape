@@ -315,13 +315,16 @@ class DFTA(Generic[U, V]):
             self.finals.copy(),
         )
 
-    def stream_trees_by_size(self, size: int) -> Generator[tuple[int, int], None, None]:
+    def stream_trees_by_size(
+        self, size: int, finals_only: bool = True
+    ) -> Generator[tuple[int, int], None, None]:
         """
         Return the number of trees produced of all sizes until the given size (included).
         stream (size, number of trees)
         """
 
         states = self.states
+        accepted = self.finals if finals_only else states
         count: dict[U, dict[int, int]] = {state: {} for state in states}
         for csize in range(1, size + 1):
             for state in states:
@@ -336,19 +339,26 @@ class DFTA(Generic[U, V]):
                             for arg_size, arg in zip(partition, args):
                                 total *= count[arg][arg_size]
                             count[state][csize] += total
-            yield csize, sum(count[state][csize] for state in self.finals)
+            yield csize, sum(count[state][csize] for state in accepted)
 
-    def trees_by_size(self, size: int) -> dict[int, int]:
+    def trees_by_size(self, size: int, finals_only: bool = True) -> dict[int, int]:
         """
         Return the number of trees produced of all sizes until the given size (included).
         """
-        return {size: count for size, count in self.stream_trees_by_size(size)}
+        return {size: count for size, count in self.stream_trees_by_size(size, finals_only = finals_only)}
 
-    def trees_at_size(self, size: int) -> int:
+    def trees_at_size(self, size: int, finals_only: bool = True) -> int:
         """
-        Return the number of trees produced of the given size.
+        Return the number of trees produced of exactly the given size.
         """
-        return self.trees_by_size(size)[size]
+        return self.trees_by_size(size, finals_only=finals_only)[size]
+
+    def trees_until_size(self, size: int, finals_only: bool = True) -> int:
+        """
+        Return the number of trees produced of the given size (included) or less.
+        """
+        return sum(self.trees_by_size(size, finals_only=finals_only).values())
+
 
     def max_arity(self) -> int:
         return max(len(args) for _, args in self.rules)
