@@ -88,11 +88,6 @@ def despecialize(
                 return letter
 
     out = grammar.map_alphabet(update)
-    states = set()
-    def mapping(x):
-        states.add(x)
-        return x
-    grammar.map_states(mapping)
-    out.finals = states
+    out.finals = out.all_states
     out.reduce()
     return out

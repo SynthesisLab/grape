@@ -85,6 +85,18 @@ class DFTA(Generic[U, V]):
         return reachable
 
     @property
+    def all_states(self) -> Set[U]:
+        """
+        The set of all states.
+        """
+        reachable = set()
+        for (_, args), dst in self.rules.items():
+            reachable.add(dst)
+            for arg in args:
+                reachable.add(arg)
+        return reachable
+
+    @property
     def alphabet(self) -> Set[V]:
         """
         The set of letters.
