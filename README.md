@@ -20,7 +20,10 @@ Supported grammar formats:
 
 - ``.grape``: our own format, the advantage is that there is only one special character ``,`` and it is trivial to parse
 - ``.ebnf``: EBNF format, the subset for bottom-up tree automata (each rule must start with a terminal)
-- ``.gram``: (planned) Lark format
+- ``.lark``: Lark format, the subset for bottom-up tree automata (each rule must start with a terminal)
+
+We highly recommend using the ``grape`` format as long as possible since it works flawlessly rather than the other formats which are partially supported due to the goal of the project.
+In other words, it is best to use other formats just as export formats.
 
 **Table of contents**:
 <!-- TOC START -->
