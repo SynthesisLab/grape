@@ -195,7 +195,7 @@ def __fix_vars__(program: Program, var_merge: dict[int, int]) -> Program:
 
 
 def grammar_from_memory(
-    dsl: dict[str, tuple[str, callable]],
+    dsl: DSL,
     memory: dict[Any, dict[int, list[Program]]],
     type_req: str,
     prev_finals: set[str],
@@ -226,9 +226,9 @@ def grammar_from_memory(
         if isinstance(p, Variable):
             return args_type[p.no]
         elif isinstance(p, Primitive):
-            return dsl[p.name][0]
+            return dsl.primitives[p.name][0]
         elif isinstance(p, Function):
-            return types.return_type(dsl[str(p.function)][0])
+            return types.return_type(dsl.primitives[str(p.function)][0])
         else:
             raise ValueError
 
@@ -281,7 +281,8 @@ def grammar_from_memory(
                     if prog not in consumed:
                         not_consumed.add(prog)
         # 2. Say that all not consumed must be consumed at some point
-        for p in tqdm(not_consumed, desc="extending automaton"):
+        unmerged = {}
+        for p in tqdm(not_consumed, desc="finding optimal loops"):
             # We should merge their state with the state of the highest sketch match
             merge_candidates = []
             size_of_canditates = 0
@@ -301,15 +302,31 @@ def grammar_from_memory(
                         break
             if len(merge_candidates) == 0:
                 # No merge was found
-                # That is, there does not exist any subcontext of this context
-                # In other words, no var of type "target_type" exists
-                print(
-                    f"[warning] the following program could not be made to loop: {p}",
-                    file=sys.stderr,
-                )
+                # Since no sub context was found and everything that may consume this type should be able to do it
+                if target_type not in unmerged:
+                    unmerged[target_type] = []
+                unmerged[target_type].append(str(p))
             else:
                 target = merge_candidates.pop(0)
                 state_collapse[str(p)] = str(target)
+        if len(unmerged) > 0:
+            total_added = 0
+            for (P, args), dst in tqdm(
+                rules.copy().items(), desc="adding remaining loops"
+            ):
+                possibles = [[arg] for arg in args]
+                added = False
+                for rtype, programs in unmerged.items():
+                    for li in possibles:
+                        if state2type[li[0]] != rtype:
+                            continue
+                        else:
+                            added = True
+                            li.extend(programs)
+                if added:
+                    total_added += 1
+                    for new_args in product(*possibles):
+                        rules[(P, new_args)] = dst
 
     dfta = DFTA(rules, finals)
     dfta = dfta.map_states(lambda x: state_collapse.get(x, x))
