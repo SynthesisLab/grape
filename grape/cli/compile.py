@@ -88,14 +88,7 @@ def main():
                 + "".join([mappers[i](state[1][i]) for i in range(len(mappers))])
             )
     else:
-        mapping = {}
-
-        def get_state(x):
-            if x not in mapping:
-                mapping[x] = f"S{len(mapping)}"
-            return mapping[x]
-
-        grammar = grammar.map_states(get_state)
+        grammar = grammar.classic_state_renaming()
     types.check_automaton(grammar, dsl, type_req)
     args_type = types.arguments(type_req)
     grammar = grammar.map_alphabet(

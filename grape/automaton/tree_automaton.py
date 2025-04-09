@@ -12,7 +12,7 @@ from typing import (
     Union,
     overload,
 )
-
+import itertools
 from grape.partitions import integer_partitions
 
 U = TypeVar("U")
@@ -106,6 +106,23 @@ class DFTA(Generic[U, V]):
         }
         self.rules = new_rules
         self.finals = self.finals.intersection(new_states)
+
+    def read_intersection(self, other: "DFTA[W, V]") -> "DFTA[tuple[U, W], V]":
+        new_finals = set(el for el in itertools.product(self.finals, other.finals))
+        new_rules: Dict[
+            Tuple[
+                V,
+                Tuple[tuple[U, W], ...],
+            ],
+            tuple[U, W],
+        ] = {}
+        for (P1, args1), dst1 in self.rules.items():
+            for (P2, args2), dst2 in other.rules.items():
+                if P1 != P2 or len(args1) != len(args2):
+                    continue
+                new_args = tuple((a1, a2) for a1, a2 in zip(args1, args2))
+                new_rules[(P1, new_args)] = (dst1, dst2)
+        return DFTA(new_rules, new_finals)
 
     def __get_consumed__(self) -> Set[U]:
         consumed: Set[U] = {q for q in self.finals}
@@ -265,6 +282,19 @@ class DFTA(Generic[U, V]):
             },
             set(map(mapping, self.finals)),
         )
+
+    def classic_state_renaming(self) -> "DFTA[str, V]":
+        """
+        Rename states in the format SXX
+        """
+        mapping = {}
+
+        def get_state(x):
+            if x not in mapping:
+                mapping[x] = f"S{len(mapping)}"
+            return mapping[x]
+
+        return self.map_states(get_state)
 
     def map_alphabet(self, mapping: Callable[[V], X]) -> "DFTA[U, X]":
         return DFTA(

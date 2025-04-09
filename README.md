@@ -7,6 +7,7 @@ It has the following features:
 - ``grape-compile``: produce a grammar from a basic DSL with size or/and depth constraints
 - ``grape-convert``: convert a grammar into another format
 - ``grape-count``: count the number of programs in a grammar up to a specific size
+- ``grape-intersection``: produce the intersection of two grammars when reading the same letter
 - ``grape-prune``: produce a pruned grammar by removing redundant programs
 - ``grape-specialize``: specialize a generic grammar to a specific type request
 - ``grape-despecialize``: despecialize a generic grammar from a specific type request
@@ -14,7 +15,6 @@ It has the following features:
 planned:
 
 - ``grape-union``: produce the union of two grammars when reading the same letter
-- ``grape-intersection``: produce the intersection of two grammars when reading the same letter
 
 Supported grammar formats:
 
