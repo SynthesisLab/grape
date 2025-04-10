@@ -69,6 +69,7 @@ def find_regular_constraints(
     has_base_grammar = not (
         base_automaton_file is None or len(base_automaton_file) == 0
     )
+
     if not has_base_grammar:
         base_grammar = grammar_by_saturation(dsl, type_req)
         approx_constraints = find_approximate_constraints(dsl, evaluator)
