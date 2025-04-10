@@ -1,15 +1,18 @@
 from collections import defaultdict
 import math
+from grape.automaton.automaton_manager import load_automaton_from_file
+from grape.automaton.spec_manager import specialize
 from grape.dsl import DSL
 from grape.enumerator import Enumerator
 from grape.evaluator import Evaluator
-from grape.program import Program
+from grape.program import Primitive, Program, Variable
 from grape.automaton_generator import (
     grammar_by_saturation,
     grammar_from_memory,
     grammar_from_type_constraints_and_commutativity,
 )
 from grape.automaton.tree_automaton import DFTA
+from grape.pruning.approximate_constraint_finder import find_approximate_constraints
 import grape.types as types
 
 from tqdm import tqdm
@@ -55,7 +58,7 @@ def find_regular_constraints(
     evaluator: Evaluator,
     max_size: int,
     rtype: str | None,
-    approx_constraints: list[tuple[Program, Program, str]],
+    base_automaton_file: str,
     optimize: bool = False,
     no_loop: bool = False,
 ) -> tuple[DFTA[str, Program], list[tuple[Program, Program, str]]]:
@@ -63,17 +66,31 @@ def find_regular_constraints(
     type_req = __infer_mega_type_req__(
         dsl.primitives, rtype, max_size, set(evaluator.base_inputs.keys())
     )
-
-    base_grammar = grammar_by_saturation(dsl, type_req)
-    grammar = grammar_from_type_constraints_and_commutativity(
-        dsl, type_req, [p[0] for p in approx_constraints]
+    has_base_grammar = not (
+        base_automaton_file is None or len(base_automaton_file) == 0
     )
-    ntrees = grammar.trees_until_size(max_size)
-    basen = base_grammar.trees_until_size(max_size)
-    print("at size:", max_size)
-    print(f"\tno pruning: {basen:.2e}")
-    print(f"\tcommutativity pruned: {ntrees:.2e} ({ntrees / basen:.2%})")
-    assert basen >= ntrees
+
+    if not has_base_grammar:
+        base_grammar = grammar_by_saturation(dsl, type_req)
+        approx_constraints = find_approximate_constraints(dsl, evaluator)
+        grammar = grammar_from_type_constraints_and_commutativity(
+            dsl, type_req, [p[0] for p in approx_constraints]
+        )
+        ntrees = grammar.trees_until_size(max_size)
+        basen = base_grammar.trees_until_size(max_size)
+        assert basen >= ntrees
+    else:
+        base_grammar = load_automaton_from_file(base_automaton_file)
+        base_grammar = dsl.map_to_variants(base_grammar)
+        base_grammar = specialize(base_grammar, type_req, dsl)
+        base_grammar = base_grammar.map_alphabet(
+            lambda x: Variable(int(x[len("var") :]))
+            if str(x).startswith("var")
+            else Primitive(x)
+        )
+        grammar = base_grammar
+        ntrees = grammar.trees_until_size(max_size)
+
     enumerator = Enumerator(grammar)
 
     expected_trees = grammar.trees_by_size(max_size)
@@ -128,17 +145,29 @@ def find_regular_constraints(
         dsl, enumerator.memory, type_req, grammar.finals, optimize, no_loop
     )
     print("at size:", max_size)
-    print(
-        "\tmethod: ratio no pruning | ratio comm. pruned | ratio pruned",
-    )
-    for n, v in [
-        ("no pruning", basen),
-        ("commutativity pruned", ntrees),
-        ("pruned", t),
-    ]:
+    if not has_base_grammar:
         print(
-            f"\t{n}: {v / basen:.2%} | {v / ntrees:.2%} | {v / t:.2%}",
+            "\tmethod: ratio no pruning | ratio comm. pruned | ratio pruned",
         )
+        for n, v in [
+            ("no pruning", basen),
+            ("commutativity pruned", ntrees),
+            ("pruned", t),
+        ]:
+            print(
+                f"\t{n}: {v / basen:.2%} | {v / ntrees:.2%} | {v / t:.2%}",
+            )
+    else:
+        print(
+            "\tmethod: ratio no pruning | ratio pruned",
+        )
+        for n, v in [
+            ("no pruning", ntrees),
+            ("pruned", t),
+        ]:
+            print(
+                f"\t{n}: {v / ntrees:.2%} | {v / t:.2%}",
+            )
     allowed = []
     for dico in enumerator.memory.values():
         for progs in dico.values():
