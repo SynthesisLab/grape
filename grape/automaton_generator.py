@@ -5,6 +5,7 @@ import sys
 from typing import Any
 from tqdm import tqdm
 
+from grape.automaton.loop_manager import LoopStrategy, add_loops
 from grape.dsl import DSL
 from grape.enumerator import Enumerator
 from grape.program import Function, Primitive, Program, Variable
@@ -199,7 +200,6 @@ def grammar_from_memory(
     memory: dict[Any, dict[int, list[Program]]],
     type_req: str,
     prev_finals: set[str],
-    optimize: bool = False,
     no_loop: bool = False,
 ) -> tuple[DFTA[str, Program], int]:
     max_size = max(max(memory[state].keys()) for state in memory)
@@ -252,98 +252,12 @@ def grammar_from_memory(
                     prod_programs[size][rtype].add(prog)
                 if state in prev_finals:
                     finals.add(dst)
-
-    state_collapse = {}
-
-    # Used for optimize=True Flag
-    # Compute the number of out derivations from given state
-    out_transitions = {}
-
-    def compute_out(state: str) -> int:
-        if state not in out_transitions:
-            n = 0
-            for (letter, args), dst in rules.items():
-                if any(arg == state for arg in args):
-                    n += compute_out(dst)
-            if n == 0:
-                n = 1
-            out_transitions[state] = n
-
-        return out_transitions[state]
-
-    if not no_loop:
-        # "Collapse" it to generate infinite size
-        # 1. find all states which are not consumed
-        not_consumed: set[Program] = set()
-        for dico in sorted(prod_programs.values(), key=lambda x: tuple(x.keys())):
-            for progs in sorted(dico.values()):
-                for prog in progs:
-                    if prog not in consumed:
-                        not_consumed.add(prog)
-        # 2. Say that all not consumed must be consumed at some point
-        unmerged = {}
-        for p in tqdm(not_consumed, desc="finding optimal loops"):
-            # We should merge their state with the state of the highest sketch match
-            merge_candidates = []
-            size_of_canditates = 0
-            best = float("inf")
-            target_type = get_rtype(p)
-            for csize in reversed(range(1, p.size())):
-                if csize < size_of_canditates:
-                    break
-                for prog in prod_programs[csize][target_type]:
-                    if (
-                        prog != p
-                        and (not optimize or compute_out(str(prog)) < best)
-                        and prog.can_be_embed_into(p)
-                    ):
-                        merge_candidates.append(prog)
-                        best = (not optimize) or compute_out(str(prog))
-                        break
-            if len(merge_candidates) == 0:
-                # No merge was found
-                # Since no sub context was found and everything that may consume this type should be able to do it
-                if target_type not in unmerged:
-                    unmerged[target_type] = []
-                unmerged[target_type].append(str(p))
-            else:
-                target = merge_candidates.pop(0)
-                state_collapse[str(p)] = str(target)
-        if len(unmerged) > 0:
-            total_added = 0
-            for (P, args), dst in tqdm(
-                rules.copy().items(), desc="adding remaining loops"
-            ):
-                possibles = [[arg] for arg in args]
-                added = False
-                for rtype, programs in unmerged.items():
-                    for li in possibles:
-                        if state2type[li[0]] != rtype:
-                            continue
-                        else:
-                            added = True
-                            li.extend(programs)
-                if added:
-                    total_added += 1
-                    for new_args in product(*possibles):
-                        rules[(P, new_args)] = dst
-
-    dfta = DFTA(rules, finals)
-    dfta = dfta.map_states(lambda x: state_collapse.get(x, x))
-    dfta.reduce()
-    # Note: it is useless to minimise the automaton is already minimal
-    mapping = {}
-
-    def get_name(x: tuple[str, ...]) -> str:
-        if x not in mapping:
-            mapping[x] = f"S{len(mapping)}"
-        return mapping[x]
-
-    relevant_dfta: DFTA = dfta.minimise(
-        get_name, lambda x, y: state2type.get(x) == state2type.get(y)
+    relevant_dfta = add_loops(
+        DFTA(rules, finals),
+        dsl,
+        LoopStrategy.NO_LOOP if no_loop else LoopStrategy.STATE,
+        type_req,
     )
-    # free memory
-    del dfta
     n = 0
 
     # Reproduce original type request to compare number of programs

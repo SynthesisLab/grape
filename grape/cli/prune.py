@@ -67,11 +67,6 @@ def parse_args():
         help="output file containing the pruned grammar",
     )
     parser.add_argument(
-        "--optimize",
-        action="store_true",
-        help="try to further reduce the number of programs. this is very slow and on average offers no or small gains",
-    )
-    parser.add_argument(
         "--no-loop",
         action="store_true",
         help="the grammar will produce programs only up to the size specified",
@@ -100,7 +95,6 @@ def main():
         args.size,
         target_type,
         args.automaton,
-        args.optimize,
         args.no_loop,
     )
 

@@ -231,8 +231,7 @@ We now extend the automaton to make it work for any size of programs.
 There are numerous ways to do this, however we considered a non-optimal but faster one due to the sheer combinatorial explosion of the size of the automata considered.
 The idea is to take ending states of programs of maximal size and make them loop over the maximum size.
 The idea is that a program of size ``n+1`` can be seen as two windows of programs of size ``n`` by moving slightly our window.
-There are multiple such windows, by default the tool chooses the first one which is way faster.
-The flag ``--optimize`` chooses the most constrained window, that is the most restrictive one, at the cost of slower extension.
+There are multiple such windows, the tool chooses the most restrictive.
 The resulting automaton is reduced then minimized.
 
 #### Step 7
@@ -252,11 +251,6 @@ For the ``size`` parameter:
 - if it is too small you won't get all your primitives in the automaton because the max size was too small, basically for a primitive of arity ``k`` to be in the automaton, the minimal size must be ``k+1``.
 - gains decrease with increased size, and time taken increases exponentially.
 - there are some effects with ``size`` such that you can get gains that are not monotone due to the fact that very few redundant programs have been added, in that case try going to one size larger, usually you get back your improvements.
-
-For the ``--optimize`` flag:
-
-- on our hardware, recent i7, it was 10 times as slow.
-- on the provided example case, it provided no improvement, even if it did we expect the improvements to be minimal.
 
 For the ``--no-loop`` flag:
 
