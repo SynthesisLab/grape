@@ -42,16 +42,30 @@ class DSL:
     def semantic(self, primitive: str) -> Any:
         return self.eval[primitive]
 
-    def get_state_types(self, automaton: DFTA[T, str | Program]) -> dict[T, str]:
+    def get_state_types(
+        self, automaton: DFTA[T, str | Program], type_req: str | None = None
+    ) -> dict[T, str]:
         """
-        Assumes types variants are not present.
+        type_req is necessary if automaton is specialized
         """
+        # Assumes types variants are not present.
+        specialized = "var0" in set(map(str, automaton.alphabet))
+        if specialized:
+            assert type_req is not None, (
+                "type request must be specified for a specialized automaton!"
+            )
+            arg_types = types.arguments(type_req)
+
         state_to_type = {}
         elements = list(automaton.rules.items())
         while elements:
             (P, args), dst = elements.pop()
-            if str(P).startswith("var_"):
+            if not specialized and str(P).startswith("var_"):
                 Ptype = str(P)[len("var_") :]
+            elif specialized and str(P).startswith("var"):
+                Ptype = arg_types[int(str(P)[len("var") :])]
+            elif specialized:
+                Ptype = self.primitives.get(str(P))[0]
             else:
                 base_Ptype = self.original_primitives.get(str(P))
                 all_possibles = types.all_variants(base_Ptype)
