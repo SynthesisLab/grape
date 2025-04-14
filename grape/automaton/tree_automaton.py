@@ -345,7 +345,10 @@ class DFTA(Generic[U, V]):
         """
         Return the number of trees produced of all sizes until the given size (included).
         """
-        return {size: count for size, count in self.stream_trees_by_size(size, finals_only = finals_only)}
+        return {
+            size: count
+            for size, count in self.stream_trees_by_size(size, finals_only=finals_only)
+        }
 
     def trees_at_size(self, size: int, finals_only: bool = True) -> int:
         """
@@ -358,7 +361,6 @@ class DFTA(Generic[U, V]):
         Return the number of trees produced of the given size (included) or less.
         """
         return sum(self.trees_by_size(size, finals_only=finals_only).values())
-
 
     def max_arity(self) -> int:
         return max(len(args) for _, args in self.rules)
