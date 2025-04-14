@@ -169,11 +169,19 @@ class DFTA(Generic[U, V]):
         self.refresh_reversed_rules()
 
     @overload
-    def minimise(self, mapping: Callable[[Tuple[U, ...]], W]) -> "DFTA[W, V]":
+    def minimise(
+        self,
+        mapping: Callable[[Tuple[U, ...]], W],
+        can_be_merged: Callable[[U, U], bool] = lambda x, y: True,
+    ) -> "DFTA[W, V]":
         pass
 
     @overload
-    def minimise(self, mapping: Literal[None] = None) -> "DFTA[Tuple[U, ...], V]":
+    def minimise(
+        self,
+        mapping: Literal[None] = None,
+        can_be_merged: Callable[[U, U], bool] = lambda x, y: True,
+    ) -> "DFTA[Tuple[U, ...], V]":
         pass
 
     def minimise(
