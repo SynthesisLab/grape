@@ -67,6 +67,9 @@ class DSL:
                     elements.insert(0, ((P, args), dst))
                     continue
                 else:
+                    assert len(all_possibles) > 0, (
+                        f"failed to find coherent primitive '{P}' in DSL during analysis of:\n\t{P} {args} -> {dst}\n\t{P} {tuple(map(lambda x: state_to_type.get(x, '?'), args))} -> {state_to_type.get(dst, '?')}"
+                    )
                     Ptype = all_possibles.pop()
             if dst in state_to_type:
                 assert state_to_type[dst] == types.return_type(Ptype)
