@@ -59,7 +59,6 @@ def find_regular_constraints(
     max_size: int,
     rtype: str | None,
     base_automaton_file: str,
-    optimize: bool = False,
     no_loop: bool = False,
 ) -> tuple[DFTA[str, Program], list[tuple[Program, Program, str]]]:
     # Find all type requests
@@ -142,7 +141,7 @@ def find_regular_constraints(
     pbar.close()
     evaluator.free_memory()
     reduced_grammar, t = grammar_from_memory(
-        dsl, enumerator.memory, type_req, grammar.finals, optimize, no_loop
+        dsl, enumerator.memory, type_req, grammar.finals, no_loop
     )
     print("at size:", max_size)
     if not has_base_grammar:
