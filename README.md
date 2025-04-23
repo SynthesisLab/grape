@@ -50,13 +50,14 @@ pip install git+https://github.com/SynthesisLab/grape.git
 Let us assume you have the following ``dsl.py`` file:
 
 ```python
+from typing import Callable
 import random
 
 MAXI = 1 << 32 - 1
 random.seed(1)
 
 # Given a type provides a function to sample one element
-sample_dict: dict[str, callable] = {"int": lambda: int(random.randint(-MAXI, MAXI))}
+sample_dict: dict[str, Callable] = {"int": lambda: int(random.randint(-MAXI, MAXI))}
 
 # Given a primitive provides a tuple (type, implementation)
 # supported types are:
@@ -69,8 +70,13 @@ sample_dict: dict[str, callable] = {"int": lambda: int(random.randint(-MAXI, MAX
 #                 but t1 -> t2 and t2 -> t1 are impossibles 
 #                 because all instanciations of 'a must have the same value
 #                 at any given time
-dsl: dict[str, tuple[str, callable]] = {
-    "+": ("int -> int -> int", lambda x, y: x + y),
+# Also supports functions with basic type hints: the type is inferred from the annotations.
+# Similarly, the type of constants 
+def add(x: int, y: int) -> int:
+    return x + y
+
+dsl: dict[str, tuple[str, Callable]] = {
+    "+": add,
     "*": ("int -> int -> int", lambda x, y: x * y),
     "-": ("int -> int -> int", lambda x, y: x - y),
     "^": ("int -> int -> int", lambda x, y: x ^ y),

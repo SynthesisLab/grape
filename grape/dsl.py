@@ -1,4 +1,4 @@
-from typing import Any, TypeVar, overload
+from typing import Any, Callable, TypeVar, overload
 import sys
 from grape import types
 from grape.automaton.tree_automaton import DFTA
@@ -11,13 +11,17 @@ TYPE_SEP = "|@>"
 
 
 class DSL:
-    def __init__(self, dsl: dict[str, tuple[str, callable]]):
-        self.primitives: dict[str, tuple[str, callable]] = {}
+    def __init__(self, dsl: dict[str, tuple[str, Callable] | Callable]):
+        self.primitives: dict[str, tuple[str, Callable]] = {}
         self.original_primitives: dict[str, str] = {}
-        self.eval: dict[str, callable] = {}
+        self.eval: dict[str, Callable] = {}
         self.to_merge = {}
 
-        for name, (stype, fn) in sorted(dsl.items()):
+        for name, item in sorted(dsl.items()):
+            if isinstance(item, tuple):
+                (stype, fn) = item
+            else:
+                (stype, fn) = types.annotations_to_type_str(item), item
             self.original_primitives[name] = stype
             variants = types.all_variants(stype)
             if len(variants) == 1:
@@ -123,14 +127,10 @@ class DSL:
             if len(variants) <= 1:
                 new_rules[(P, args)] = dst
             else:
-                variants = [
-                    t for t in variants if types.return_type(t) == state2type[dst]
-                ]
+                variants = [t for t in variants if types.return_type(t) == state2type[dst]]
                 for i, arg_state in enumerate(args):
                     variants = [
-                        t
-                        for t in variants
-                        if types.arguments(t)[i] == state2type[arg_state]
+                        t for t in variants if types.arguments(t)[i] == state2type[arg_state]
                     ]
                 assert len(variants) == 1
                 newP = make(self.__name_variant__(str(P), variants.pop()))
@@ -138,9 +138,7 @@ class DSL:
         return DFTA(new_rules, set(list(automaton.finals)))
 
     def check_all_variants_present(self, grammar: DFTA[Any, Program]) -> bool:
-        missing = set(self.primitives.keys()).difference(
-            set(map(str, grammar.alphabet))
-        )
+        missing = set(self.primitives.keys()).difference(set(map(str, grammar.alphabet)))
 
         if any(TYPE_SEP in t for t in missing):
             missing_version = {t for t in missing if TYPE_SEP in t}
@@ -151,9 +149,7 @@ class DSL:
         return not missing
 
     def check_all_primitives_present(self, grammar: DFTA[Any, Program]) -> bool:
-        missing = set(self.original_primitives.keys()).difference(
-            set(map(str, grammar.alphabet))
-        )
+        missing = set(self.original_primitives.keys()).difference(set(map(str, grammar.alphabet)))
         if missing:
             print(
                 f"[warning] the following primitives are not present in the grammar: {', '.join(missing)}",

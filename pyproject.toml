@@ -19,3 +19,8 @@ grape-info = "grape.cli.info:main"
 grape-intersection = "grape.cli.intersection:main"
 grape-prune = "grape.cli.prune:main"
 grape-specialize = "grape.cli.specialize:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+]
