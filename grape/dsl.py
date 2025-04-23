@@ -1,4 +1,4 @@
-from typing import Any, TypeVar, overload
+from typing import Any, Callable, TypeVar, overload
 import sys
 from grape import types
 from grape.automaton.tree_automaton import DFTA
@@ -11,13 +11,17 @@ TYPE_SEP = "|@>"
 
 
 class DSL:
-    def __init__(self, dsl: dict[str, tuple[str, callable]]):
-        self.primitives: dict[str, tuple[str, callable]] = {}
+    def __init__(self, dsl: dict[str, tuple[str, Callable] | Callable]):
+        self.primitives: dict[str, tuple[str, Callable]] = {}
         self.original_primitives: dict[str, str] = {}
-        self.eval: dict[str, callable] = {}
+        self.eval: dict[str, Callable] = {}
         self.to_merge = {}
 
-        for name, (stype, fn) in sorted(dsl.items()):
+        for name, item in sorted(dsl.items()):
+            if isinstance(item, tuple):
+                (stype, fn) = item
+            else:
+                (stype, fn) = types.annotations_to_type_str(item), item
             self.original_primitives[name] = stype
             variants = types.all_variants(stype)
             if len(variants) == 1:

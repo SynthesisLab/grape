@@ -1,10 +1,14 @@
 from collections import defaultdict
+import inspect
 from itertools import product
-from typing import Any
+from typing import Any, get_type_hints, TYPE_CHECKING
 
-from grape.dsl import DSL
 from grape.program import Primitive, Program, Variable
 from grape.automaton.tree_automaton import DFTA
+
+# Solve circular import problem
+if TYPE_CHECKING:
+    from grape.dsl import DSL
 
 
 def return_type(type_req: str) -> str:
@@ -18,6 +22,31 @@ def arguments(type_req: str) -> tuple[str, ...]:
 def parse(type_req: str) -> tuple[tuple[str, ...], str]:
     elems = tuple(map(lambda x: x.strip(), type_req.split("->")))
     return elems[:-1], elems[-1]
+
+
+def annotations_to_type_str(item: Any) -> str:
+    """
+    Convert python type annotations to a string in arrow notation, e.g.
+    ```py
+    def f(x: int, y: "MyClass") -> str:
+        ...
+    ```
+    is mapped to "int -> MyClass -> str".
+
+    Supports custom classes, but not nested types such as tuples, lists or dicts.
+
+    Also works for constants, e.g. `ONE = 1` is mapped to "int" (does not support type annotations for constants).
+
+    Does not support generic functions.
+    """
+    if callable(item):
+        hints = get_type_hints(item)
+        sig = inspect.signature(item)
+        items = [hints[v] for v in sig.parameters] + [hints["return"]]
+        type_str = " -> ".join(x.__name__ for x in items)
+        return type_str
+    else:
+        return type(item).__name__
 
 
 def all_variants(type_req: str) -> list[str]:
@@ -58,7 +87,7 @@ def all_variants(type_req: str) -> list[str]:
     return out
 
 
-def check_automaton(dfta: DFTA[Any, Program], dsl: DSL, type_req: str) -> bool:
+def check_automaton(dfta: DFTA[Any, Program], dsl: "DSL", type_req: str) -> bool:
     var_types = arguments(type_req)
     state2type = {}
     state2reasons = defaultdict(list)
