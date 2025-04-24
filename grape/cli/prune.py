@@ -1,4 +1,5 @@
 import argparse
+from typing import Callable
 from tqdm import tqdm
 from grape import types
 from grape.automaton.automaton_manager import dump_automaton_to_file
@@ -9,7 +10,7 @@ from grape.pruning.regular_constraint_finder import find_regular_constraints
 
 
 def sample_inputs(
-    nsamples: int, sample_dict: dict[str, callable], equal_dict: dict[str, callable]
+    nsamples: int, sample_dict: dict[str, Callable], equal_dict: dict[str, Callable]
 ) -> dict[str, list]:
     inputs = {}
     pbar = tqdm(total=nsamples * len(sample_dict))

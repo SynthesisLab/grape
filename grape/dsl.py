@@ -15,7 +15,7 @@ class DSL:
         self.primitives: dict[str, tuple[str, Callable]] = {}
         self.original_primitives: dict[str, str] = {}
         self.eval: dict[str, Callable] = {}
-        self.to_merge = {}
+        self.to_merge: dict[Program, Program] = {}
 
         for name, item in sorted(dsl.items()):
             if isinstance(item, tuple):
@@ -60,7 +60,7 @@ class DSL:
             )
             arg_types = types.arguments(type_req)
 
-        state_to_type = {}
+        state_to_type: dict[Any, str] = {}
         elements = list(automaton.rules.items())
         while elements:
             (P, args), dst = elements.pop()
@@ -69,9 +69,9 @@ class DSL:
             elif specialized and str(P).startswith("var"):
                 Ptype = arg_types[int(str(P)[len("var") :])]
             elif specialized:
-                Ptype = self.primitives.get(str(P))[0]
+                Ptype = self.primitives[str(P)][0]
             else:
-                base_Ptype = self.original_primitives.get(str(P))
+                base_Ptype = self.original_primitives[str(P)]
                 all_possibles = types.all_variants(base_Ptype)
                 for i, arg_state in enumerate(args):
                     if arg_state not in state_to_type:

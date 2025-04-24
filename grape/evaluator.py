@@ -1,5 +1,5 @@
 import random
-from typing import Any, Generator, Optional
+from typing import Any, Callable, Generator, Optional
 from grape.dsl import DSL
 from grape.program import Function, Primitive, Program, Variable
 import grape.types as types
@@ -17,7 +17,7 @@ class Evaluator:
         self,
         dsl: DSL,
         inputs: dict[str, list],
-        equal_dict: dict[str, callable],
+        equal_dict: dict[str, Callable],
         skip_exceptions: set,
         seed: int = 1,
     ):

@@ -1,4 +1,4 @@
-from typing import Generator, TypeVar
+from typing import Callable, Generator, TypeVar
 from grape.dsl import DSL
 from grape.evaluator import Evaluator
 from grape.program import Function, Primitive, Program, Variable
@@ -37,9 +37,9 @@ def __produce_all_variants__(
 
 
 def __add_commutative_constraints__(
-    dsl: dict[str, tuple[str, callable]], primitive: str, args: list[Variable]
+    dsl: dict[str, tuple[str, Callable]], primitive: str, args: list[Variable]
 ) -> list[tuple[Program, Program, str]]:
-    constraints = []
+    constraints: list[tuple[Program, Program, str]] = []
     stype = dsl[primitive][0]
     args_type, rtype = types.parse(stype)
     swapped_indices = [i for i, x in enumerate(args) if x.no != i]
@@ -67,7 +67,7 @@ def __add_commutative_constraints__(
                 continue
             type_req2 = type_req1 + args2 + (rtype,)
 
-            second_arg = (
+            second_arg: Program = (
                 Function(
                     Primitive(p2),
                     [Variable(i + nargs + nargs1) for i in range(len(args2))],
