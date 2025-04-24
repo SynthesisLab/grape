@@ -1,4 +1,5 @@
 import importlib
+from typing import Callable
 
 from grape.dsl import DSL
 
@@ -40,7 +41,7 @@ def load_module(source, module_name=None):
     return module
 
 
-def __make_error_lambda(text: str) -> callable:
+def __make_error_lambda(text: str) -> Callable:
     def f():
         raise ValueError(text)
 
@@ -52,8 +53,8 @@ def load_python_file(
 ) -> tuple[
     DSL,
     str | None,
-    dict[str, callable],
-    dict[str, callable],
+    dict[str, Callable],
+    dict[str, Callable],
     set,
 ]:
     module = load_module(file_path)

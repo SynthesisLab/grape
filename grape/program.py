@@ -5,7 +5,9 @@ class Program(ABC):
     def __hash__(self):
         return self._hash
 
-    def __eq__(self, other: "Program") -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Program):
+            return NotImplemented
         return self._hash == other._hash
 
     def __repr__(self):

@@ -2,7 +2,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from itertools import product
 import sys
-from typing import Any
+from typing import Any, Callable
 from tqdm import tqdm
 
 from grape.automaton.loop_manager import LoopStrategy, add_loops
@@ -15,9 +15,9 @@ import grape.types as types
 
 @dataclass
 class Constraint:
-    init: callable
-    transition: callable
-    is_final: callable
+    init: Callable
+    transition: Callable
+    is_final: Callable
 
 
 def size_constraint(min_size: int = 0, max_size: int = -1) -> Constraint:

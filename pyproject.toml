@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "tqdm>=4.67.1",
+    "types-tqdm>=4.67.0.20250417",
 ]
 
 [tool.ruff]
@@ -27,5 +28,6 @@ grape-specialize = "grape.cli.specialize:main"
 
 [dependency-groups]
 dev = [
+    "mypy>=1.15.0",
     "pytest>=8.3.5",
 ]

@@ -1,5 +1,6 @@
 from collections import defaultdict
 import math
+from typing import Callable
 from grape.automaton.automaton_manager import load_automaton_from_file
 from grape.automaton.spec_manager import specialize
 from grape.dsl import DSL
@@ -19,7 +20,7 @@ from tqdm import tqdm
 
 
 def __infer_mega_type_req__(
-    dsl: dict[str, tuple[str, callable]],
+    dsl: dict[str, tuple[str, Callable]],
     rtype: str | None,
     max_size: int,
     samplable_types: set[str],
@@ -28,7 +29,7 @@ def __infer_mega_type_req__(
     max_per_type = defaultdict(int)
     for str_type, _ in dsl.values():
         args = types.arguments(str_type)
-        count = defaultdict(int)
+        count: dict[str, int] = defaultdict(int)
         nargs = len(args)
         for arg in args:
             count[arg] += 1
@@ -148,24 +149,24 @@ def find_regular_constraints(
         print(
             "\tmethod: ratio no pruning | ratio comm. pruned | ratio pruned",
         )
-        for n, v in [
+        for s, v in [
             ("no pruning", basen),
             ("commutativity pruned", ntrees),
             ("pruned", t),
         ]:
             print(
-                f"\t{n}: {v / basen:.2%} | {v / ntrees:.2%} | {v / t:.2%}",
+                f"\t{s}: {v / basen:.2%} | {v / ntrees:.2%} | {v / t:.2%}",
             )
     else:
         print(
             "\tmethod: ratio no pruning | ratio pruned",
         )
-        for n, v in [
+        for s, v in [
             ("no pruning", ntrees),
             ("pruned", t),
         ]:
             print(
-                f"\t{n}: {v / ntrees:.2%} | {v / t:.2%}",
+                f"\t{s}: {v / ntrees:.2%} | {v / t:.2%}",
             )
     allowed = []
     for dico in enumerator.memory.values():

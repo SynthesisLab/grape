@@ -51,8 +51,8 @@ def annotations_to_type_str(item: Any) -> str:
 
 def all_variants(type_req: str) -> list[str]:
     elements = map(lambda x: x.strip(), type_req.split("->"))
-    names = []
-    names2possibles = {}
+    names: list[int | str] = []
+    names2possibles: dict[int | str, list[str]] = {}
     for i, el in enumerate(elements):
         if el.startswith("'"):
             # Polymorphic type
@@ -76,12 +76,14 @@ def all_variants(type_req: str) -> list[str]:
             names.append(i)
             names2possibles[i] = [el]
     out = []
-    possibles = [[(name, x) for x in poss] for name, poss in names2possibles.items()]
+    options: list[list[tuple[str | int, str]]] = [
+        [(name, x) for x in poss] for name, poss in names2possibles.items()
+    ]
 
-    def get_by_name(n, conf):
+    def get_by_name(n: int | str, conf) -> str:
         return [t for name, t in conf if name == n][0]
 
-    for conf in product(*possibles):
+    for conf in product(*options):
         type_req_variant = "->".join(map(lambda n: get_by_name(n, conf), names))
         out.append(type_req_variant)
     return out
@@ -89,7 +91,7 @@ def all_variants(type_req: str) -> list[str]:
 
 def check_automaton(dfta: DFTA[Any, Program], dsl: "DSL", type_req: str) -> bool:
     var_types = arguments(type_req)
-    state2type = {}
+    state2type: dict[Any, str] = {}
     state2reasons = defaultdict(list)
 
     def print_reason(state: Any) -> str:
