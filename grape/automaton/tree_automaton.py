@@ -120,8 +120,15 @@ class DFTA(Generic[U, V]):
         self.rules = new_rules
         self.finals = self.finals.intersection(new_states)
 
-    def read_intersection(self, other: "DFTA[W, V]") -> "DFTA[tuple[U, W], V]":
-        new_finals = set(el for el in itertools.product(self.finals, other.finals))
+    def __product_rules__(
+        self, other: "DFTA[W, V]"
+    ) -> Dict[
+        Tuple[
+            V,
+            Tuple[tuple[U, W], ...],
+        ],
+        tuple[U, W],
+    ]:
         new_rules: Dict[
             Tuple[
                 V,
@@ -135,7 +142,17 @@ class DFTA(Generic[U, V]):
                     continue
                 new_args = tuple((a1, a2) for a1, a2 in zip(args1, args2))
                 new_rules[(P1, new_args)] = (dst1, dst2)
-        return DFTA(new_rules, new_finals)
+        return new_rules
+
+    def read_intersection(self, other: "DFTA[W, V]") -> "DFTA[tuple[U, W], V]":
+        new_finals = set(el for el in itertools.product(self.finals, other.finals))
+        return DFTA(self.__product_rules__(other), new_finals)
+
+    def read_union(self, other: "DFTA[W, V]") -> "DFTA[tuple[U, W], V]":
+        new_finals = set(
+            el for el in itertools.product(self.finals, other.states)
+        ) | set(el for el in itertools.product(self.states, other.finals))
+        return DFTA(self.__product_rules__(other), new_finals)
 
     def __get_consumed__(self) -> Set[U]:
         consumed: Set[U] = {q for q in self.finals}
