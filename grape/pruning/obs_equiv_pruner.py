@@ -2,6 +2,7 @@ from collections import defaultdict
 import math
 from typing import Callable
 from grape.automaton.automaton_manager import load_automaton_from_file
+from grape.automaton.loop_manager import LoopStrategy, add_loops
 from grape.automaton.spec_manager import specialize
 from grape.dsl import DSL
 from grape.enumerator import Enumerator
@@ -10,10 +11,10 @@ from grape.program import Primitive, Program, Variable
 from grape.automaton_generator import (
     grammar_by_saturation,
     grammar_from_memory,
-    grammar_from_type_constraints_and_commutativity,
+    commutativity_constraint,
 )
 from grape.automaton.tree_automaton import DFTA
-from grape.pruning.approximate_constraint_finder import find_approximate_constraints
+import grape.pruning.commutativity_pruner as commutativity_pruner
 import grape.types as types
 
 from tqdm import tqdm
@@ -54,31 +55,27 @@ def __infer_mega_type_req__(
     return type_req
 
 
-def find_regular_constraints(
+def __get_base_grammar__(
+    has_base_grammar: bool,
     dsl: DSL,
     evaluator: Evaluator,
     max_size: int,
     rtype: str | None,
     base_automaton_file: str,
-    no_loop: bool = False,
-) -> tuple[DFTA[str, Program], list[tuple[Program, Program, str]]]:
-    # Find all type requests
-    type_req = __infer_mega_type_req__(
-        dsl.primitives, rtype, max_size, set(evaluator.base_inputs.keys())
-    )
-    has_base_grammar = not (
-        base_automaton_file is None or len(base_automaton_file) == 0
-    )
-
+    type_req: str,
+):
+    base_grammar = grammar_by_saturation(dsl, type_req)
     if not has_base_grammar:
-        base_grammar = grammar_by_saturation(dsl, type_req)
-        approx_constraints = find_approximate_constraints(dsl, evaluator)
-        grammar = grammar_from_type_constraints_and_commutativity(
-            dsl, type_req, [p[0] for p in approx_constraints]
+        commutatives = commutativity_pruner.prune(dsl, evaluator)
+        grammar = grammar_by_saturation(
+            dsl,
+            type_req,
+            [
+                commutativity_constraint(
+                    dsl, commutatives, rtype if rtype is not None else "none"
+                )
+            ],
         )
-        ntrees = grammar.trees_until_size(max_size)
-        basen = base_grammar.trees_until_size(max_size)
-        assert basen >= ntrees
     else:
         base_grammar = load_automaton_from_file(base_automaton_file)
         base_grammar = dsl.map_to_variants(base_grammar)
@@ -89,12 +86,34 @@ def find_regular_constraints(
             else Primitive(x)
         )
         grammar = base_grammar
-        ntrees = grammar.trees_until_size(max_size)
+    base_trees_by_size = base_grammar.trees_by_size(max_size)
+    enum_ntrees = grammar.trees_until_size(max_size)
+    return grammar, base_trees_by_size, enum_ntrees
+
+
+def prune(
+    dsl: DSL,
+    evaluator: Evaluator,
+    max_size: int,
+    rtype: str | None,
+    base_automaton_file: str,
+    no_loop: bool = False,
+) -> tuple[DFTA[str, Program], str]:
+    # Find all type requests
+    type_req = __infer_mega_type_req__(
+        dsl.primitives, rtype, max_size, set(evaluator.base_inputs.keys())
+    )
+    has_base_grammar = not (
+        base_automaton_file is None or len(base_automaton_file) == 0
+    )
+    grammar, base_expected_trees, enum_ntrees = __get_base_grammar__(
+        has_base_grammar, dsl, evaluator, max_size, rtype, base_automaton_file, type_req
+    )
+    base_ntrees = sum(base_expected_trees.values())
 
     enumerator = Enumerator(grammar)
 
     expected_trees = grammar.trees_by_size(max_size)
-    original_expected_trees = base_grammar.trees_by_size(max_size)
     max_arity = dsl.max_arity()
 
     def estimate_total(size: int) -> tuple[int, float]:
@@ -108,14 +127,14 @@ def find_regular_constraints(
             sum(expected_trees[s] * ratio for s in range(size + 1, max_size + 1))
         )
         ratio = sum(
-            enumerator.count_programs_at_size(s) / original_expected_trees[s]
+            enumerator.count_programs_at_size(s) / base_expected_trees[s]
             for s in range(min_size, size + 1)
         ) / (size - min_size + 1)
 
         return total, ratio
 
     # Generate all programs until some size
-    pbar = tqdm(total=ntrees)
+    pbar = tqdm(total=enum_ntrees)
     pbar.set_description_str("obs. equiv.")
     gen = enumerator.enumerate_until_size(max_size + 1)
     program = next(gen)
@@ -142,34 +161,24 @@ def find_regular_constraints(
     pbar.close()
     evaluator.free_memory()
     reduced_grammar, t = grammar_from_memory(
-        dsl, enumerator.memory, type_req, grammar.finals, no_loop
+        enumerator.memory, type_req, grammar.finals
+    )
+    reduced_grammar = add_loops(
+        reduced_grammar,
+        dsl,
+        LoopStrategy.NO_LOOP if no_loop else LoopStrategy.STATE,
+        type_req,
     )
     print("at size:", max_size)
-    if not has_base_grammar:
+    print(
+        "\tmethod: ratio no pruning | ratio enum. | ratio pruned",
+    )
+    for s, v in [
+        ("no pruning", base_ntrees),
+        ("commutativity pruned", enum_ntrees),
+        ("pruned", t),
+    ]:
         print(
-            "\tmethod: ratio no pruning | ratio comm. pruned | ratio pruned",
+            f"\t{s}: {v / base_ntrees:.2%} | {v / enum_ntrees:.2%} | {v / t:.2%}",
         )
-        for s, v in [
-            ("no pruning", basen),
-            ("commutativity pruned", ntrees),
-            ("pruned", t),
-        ]:
-            print(
-                f"\t{s}: {v / basen:.2%} | {v / ntrees:.2%} | {v / t:.2%}",
-            )
-    else:
-        print(
-            "\tmethod: ratio no pruning | ratio pruned",
-        )
-        for s, v in [
-            ("no pruning", ntrees),
-            ("pruned", t),
-        ]:
-            print(
-                f"\t{s}: {v / ntrees:.2%} | {v / t:.2%}",
-            )
-    allowed = []
-    for dico in enumerator.memory.values():
-        for progs in dico.values():
-            allowed += [(p, type_req) for p in progs]
-    return reduced_grammar, allowed
+    return reduced_grammar, type_req

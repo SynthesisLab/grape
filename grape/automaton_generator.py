@@ -1,11 +1,9 @@
-from collections import defaultdict
 from dataclasses import dataclass
 from itertools import product
 import sys
 from typing import Any, Callable
 from tqdm import tqdm
 
-from grape.automaton.loop_manager import LoopStrategy, add_loops
 from grape.dsl import DSL
 from grape.enumerator import Enumerator
 from grape.program import Function, Primitive, Program, Variable
@@ -17,6 +15,9 @@ import grape.types as types
 class Constraint:
     init: Callable
     transition: Callable
+    """
+    Returning None forbids the transition
+    """
     is_final: Callable
 
 
@@ -59,6 +60,36 @@ def depth_constraint(min_depth: int = 0, max_depth: int = -1) -> Constraint:
         lambda _: 1,
         transition,
         lambda s: s == -1 or (s >= min_depth and (max_depth > 0 and s <= max_depth)),
+    )
+
+
+def commutativity_constraint(
+    dsl: DSL, commutatives: list[tuple[str, list[int]]], target_type: str
+) -> Constraint:
+    to_check: dict[str, list[tuple[int, int]]] = {}
+    for p, swapped in commutatives:
+        if p not in to_check:
+            to_check[p] = []
+        to_check[p].append((swapped[0], swapped[1]))
+
+    def transition(p: Program, args: tuple[str, ...]) -> str | None:
+        if isinstance(p, Function):
+            key = str(p.function)
+            if key in to_check:
+                if all(args[i] <= args[j] for i, j in to_check[key]):
+                    return key
+                else:
+                    return None
+            else:
+                return key
+        else:
+            return str(p)
+
+    return Constraint(
+        str,
+        transition,
+        lambda s: target_type == "none"
+        or types.return_type(dsl.primitives[s]) == target_type,
     )
 
 
@@ -132,57 +163,6 @@ def grammar_by_saturation(
     return DFTA(rules, finals)
 
 
-def grammar_from_type_constraints_and_commutativity(
-    dsl: DSL, requested_type: str, programs: list[Program]
-) -> DFTA[str, Program]:
-    gargs, grtype = types.parse(requested_type)
-    whatever = grtype == "None"
-    finals = set([grtype]) if not whatever else set()
-    rules: dict[tuple[Program, tuple[str, ...]], str] = {}
-    prims_per_type = defaultdict(list)
-    # Add variables
-    for i, state in enumerate(gargs):
-        if whatever:
-            finals.add(state)
-        rules[(Variable(i), tuple())] = state
-        if state not in prims_per_type[state]:
-            prims_per_type[state].append(state)
-
-    # Compute dict type -> primitives
-    for primitive, (str_type, fn) in dsl.primitives.items():
-        rtype = types.return_type(str_type)
-        prims_per_type[rtype].append(primitive)
-    # Add elements from DSL
-    for primitive, (str_type, fn) in dsl.primitives.items():
-        # check if this primitive is commutative
-        args, rtype = types.parse(str_type)
-        if rtype == grtype or whatever:
-            finals.add(primitive)
-        patterns = [
-            tuple(
-                [
-                    args[el.no]
-                    if isinstance(el, Variable)
-                    else (str(el.function) if isinstance(el, Function) else str(el))
-                    for el in p.arguments
-                ]
-            )
-            for p in programs
-            if isinstance(p, Function)
-            and isinstance(p.function, Primitive)
-            and p.function.name == primitive
-        ]
-        letter = Primitive(primitive)
-        for nargs in product(*[prims_per_type[arg] for arg in args]):
-            if nargs in patterns:
-                continue
-            rules[(letter, nargs)] = primitive
-
-    dfta = DFTA(rules, finals)
-    dfta.reduce()
-    return dfta
-
-
 def __fix_vars__(program: Program, var_merge: dict[int, int]) -> Program:
     if isinstance(program, Primitive):
         return program
@@ -196,11 +176,9 @@ def __fix_vars__(program: Program, var_merge: dict[int, int]) -> Program:
 
 
 def grammar_from_memory(
-    dsl: DSL,
     memory: dict[Any, dict[int, list[Program]]],
     type_req: str,
     prev_finals: set[str],
-    no_loop: bool = False,
 ) -> tuple[DFTA[str, Program], int]:
     max_size = max(max(memory[state].keys()) for state in memory)
     args_type = types.arguments(type_req)
@@ -216,21 +194,6 @@ def grammar_from_memory(
     # Produce rules incrementally
     rules: dict[tuple[Program, tuple[str, ...]], str] = {}
     finals: set[str] = set()
-    prod_programs: dict[int, dict[str, set[Program]]] = defaultdict(
-        lambda: defaultdict(set)
-    )
-    consumed: set[Program] = set()
-    state2type: dict[str, str] = {}
-
-    def get_rtype(p: Program) -> str:
-        if isinstance(p, Variable):
-            return args_type[p.no]
-        elif isinstance(p, Primitive):
-            return dsl.primitives[p.name][0]
-        elif isinstance(p, Function):
-            return types.return_type(dsl.primitives[str(p.function)][0])
-        else:
-            raise ValueError
 
     for size in tqdm(range(1, max_size + 1), desc="building automaton"):
         for state in sorted(memory):
@@ -240,25 +203,17 @@ def grammar_from_memory(
                 dst = str(prog)
                 if isinstance(prog, Function):
                     key = (prog.function, tuple(map(str, prog.arguments)))
-                    if not no_loop:
-                        consumed.update(prog.arguments)
                 else:
                     key = (prog, ())
                 assert key not in rules
                 rules[key] = dst
-                rtype = get_rtype(prog)
-                state2type[dst] = rtype
-                if not no_loop:
-                    prod_programs[size][rtype].add(prog)
                 if state in prev_finals:
                     finals.add(dst)
-    relevant_dfta = add_loops(
-        DFTA(rules, finals),
-        dsl,
-        LoopStrategy.NO_LOOP if no_loop else LoopStrategy.STATE,
-        type_req,
-    )
-    n = 0
+    relevant_dfta = DFTA(rules, finals)
+
+    # ==================================
+    #  STATS
+    # ==================================
 
     # Reproduce original type request to compare number of programs
     # add a rule for each deleted variable
@@ -274,7 +229,7 @@ def grammar_from_memory(
                 added.add((old, ()))
     relevant_dfta.refresh_reversed_rules()
     n = relevant_dfta.trees_until_size(max_size)
-    from_enum = test(memory, relevant_dfta, max_size)
+    from_enum = __check_is_superset__(memory, relevant_dfta, max_size)
     total_programs = sum(
         sum(len(memory[state][s]) for state in memory) for s in range(1, max_size + 1)
     )
@@ -285,10 +240,12 @@ def grammar_from_memory(
     for x in added:
         del relevant_dfta.rules[x]
     relevant_dfta.refresh_reversed_rules()
+    # ==================================
+
     return relevant_dfta, n
 
 
-def test(
+def __check_is_superset__(
     memory: dict[Any, dict[int, list[Program]]], dfta: DFTA[Any, Program], max_size: int
 ) -> int:
     enum = Enumerator(dfta)

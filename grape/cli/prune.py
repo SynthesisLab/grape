@@ -6,7 +6,7 @@ from grape.automaton.automaton_manager import dump_automaton_to_file
 from grape.cli import dsl_loader
 from grape.program import Primitive, Variable
 from grape.evaluator import Evaluator
-from grape.pruning.regular_constraint_finder import find_regular_constraints
+from grape.pruning.obs_equiv_pruner import prune
 
 
 def sample_inputs(
@@ -90,7 +90,7 @@ def main():
     inputs = sample_inputs(args.samples, sample_dict, equal_dict)
 
     evaluator = Evaluator(dsl, inputs, equal_dict, skip_exceptions)
-    grammar, allowed = find_regular_constraints(
+    grammar, type_req = prune(
         dsl,
         evaluator,
         args.size,
@@ -99,7 +99,6 @@ def main():
         args.no_loop,
     )
 
-    type_req = allowed[0][-1]
     types.check_automaton(grammar, dsl, type_req)
     args_type = types.arguments(type_req)
     grammar = grammar.map_alphabet(
