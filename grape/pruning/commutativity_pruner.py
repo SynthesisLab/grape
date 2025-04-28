@@ -1,18 +1,8 @@
-from typing import Callable, Generator, TypeVar
+from typing import Generator, TypeVar
 from grape.dsl import DSL
 from grape.evaluator import Evaluator
 from grape.program import Function, Primitive, Program, Variable
 import grape.types as types
-
-
-def find_approximate_constraints(
-    dsl: DSL,
-    evaluator: Evaluator,
-) -> list[tuple[Program, Program, str]]:
-    constraints = __find_commutativity__(dsl, evaluator)
-    evaluator.clean_memoisation()
-    return constraints
-
 
 T = TypeVar("T")
 
@@ -36,18 +26,17 @@ def __produce_all_variants__(
             current[i] += 1
 
 
-def __add_commutative_constraints__(
-    dsl: dict[str, tuple[str, Callable]], primitive: str, args: list[Variable]
+def get_rewrites(
+    dsl: DSL, primitive: str, swapped_indices: tuple[int, int]
 ) -> list[tuple[Program, Program, str]]:
     constraints: list[tuple[Program, Program, str]] = []
     stype = dsl[primitive][0]
-    args_type, rtype = types.parse(stype)
-    swapped_indices = [i for i, x in enumerate(args) if x.no != i]
+    args_type, _ = types.parse(stype)
     swapped_type = args_type[swapped_indices[0]]
 
-    nargs = len(args)
+    nargs = len(types.arguments(dsl.primitives[primitive]))
 
-    for p1, (stype1, _) in dsl.copy().items():
+    for p1, (stype1, _) in dsl.primitives.copy().items():
         args1, rtype1 = types.parse(stype1)
         if rtype1 != swapped_type:
             continue
@@ -57,15 +46,13 @@ def __add_commutative_constraints__(
             if nargs1 > 0
             else Primitive(p1)
         )
-        type_req1 = args_type + args1
 
-        for p2, (stype2, _) in dsl.items():
+        for p2, (stype2, _) in dsl.primitives.items():
             if p1 >= p2:
                 continue
             args2, rtype2 = types.parse(stype2)
             if rtype2 != swapped_type:
                 continue
-            type_req2 = type_req1 + args2 + (rtype,)
 
             second_arg: Program = (
                 Function(
@@ -86,9 +73,8 @@ def __add_commutative_constraints__(
             )
             equiv_to.arguments[swapped_indices[0]] = second_arg
             equiv_to.arguments[swapped_indices[1]] = first_arg
-            constraints.append((deleted, equiv_to, "->".join(type_req2)))
+            constraints.append((deleted, equiv_to))
         # Add additional constraint for variable type
-        type_req2 = type_req1 + (swapped_type,) + (rtype,)
 
         second_arg = Variable(swapped_indices[0])
         # Valid pair that we have to forbid
@@ -98,16 +84,15 @@ def __add_commutative_constraints__(
         equiv_to = Function(Primitive(primitive), [Variable(i) for i in range(nargs)])
         equiv_to.arguments[swapped_indices[0]] = second_arg
         equiv_to.arguments[swapped_indices[1]] = first_arg
-        constraints.append((deleted, equiv_to, "->".join(type_req2)))
+        constraints.append((deleted, equiv_to))
 
     return constraints
 
 
-def __find_commutativity__(
+def prune(
     dsl: DSL,
     evaluator: Evaluator,
-) -> list[tuple[Program, Program, str]]:
-    constraints = []
+) -> list[tuple[str, list[int]]]:
     commutatives = []
     for prim, (stype, _) in dsl.primitives.items():
         args = types.arguments(stype)
@@ -132,10 +117,8 @@ def __find_commutativity__(
                 continue
             variant = Function(Primitive(prim), new_args)
             if evaluator.eval(variant, stype) is not None:
-                commutatives.append(prim)
-                constraints += __add_commutative_constraints__(
-                    dsl.primitives, prim, new_args
+                commutatives.append(
+                    (prim, [i for i, x in enumerate(new_args) if x.no != i])
                 )
-    if commutatives:
-        print("commutatives:", ", ".join(commutatives))
-    return constraints
+    evaluator.clean_memoisation()
+    return commutatives
