@@ -24,6 +24,7 @@ grape-enum = "grape.cli.enum:main"
 grape-info = "grape.cli.info:main"
 grape-intersection = "grape.cli.intersection:main"
 grape-prune = "grape.cli.prune:main"
+grape-union = "grape.cli.union:main"
 grape-specialize = "grape.cli.specialize:main"
 
 [dependency-groups]
