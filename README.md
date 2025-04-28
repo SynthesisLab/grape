@@ -10,13 +10,10 @@ It has the following features:
 - ``grape-enum``: print all programs in a grammar up to a specific size
 - ``grape-info``: provides basic information about a given grammar
 - ``grape-intersection``: produce the intersection of two grammars when reading the same letter
+- ``grape-union``: produce the union of two grammars when reading the same letter
 - ``grape-prune``: produce a pruned grammar by removing redundant programs
 - ``grape-specialize``: specialize a generic grammar to a specific type request
 - ``grape-despecialize``: despecialize a generic grammar from a specific type request
-
-planned:
-
-- ``grape-union``: produce the union of two grammars when reading the same letter
 
 Supported grammar formats:
 
