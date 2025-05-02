@@ -210,7 +210,6 @@ def grammar_from_memory(
                     key = (prog.function, tuple(map(str, prog.arguments)))
                 else:
                     key = (prog, ())
-                assert key not in rules
                 rules[key] = dst
                 if state in prev_finals:
                     finals.add(dst)
