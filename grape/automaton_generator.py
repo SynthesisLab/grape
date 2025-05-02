@@ -64,8 +64,9 @@ def depth_constraint(min_depth: int = 0, max_depth: int = -1) -> Constraint:
 
 
 def commutativity_constraint(
-    dsl: DSL, commutatives: list[tuple[str, list[int]]], target_type: str
+    dsl: DSL, commutatives: list[tuple[str, list[int]]], type_req: str
 ) -> Constraint:
+    arg_types, target_type = types.parse(type_req)
     to_check: dict[str, list[tuple[int, int]]] = {}
     for p, swapped in commutatives:
         if p not in to_check:
@@ -89,7 +90,11 @@ def commutativity_constraint(
         str,
         transition,
         lambda s: target_type == "none"
-        or types.return_type(dsl.primitives[s]) == target_type,
+        or (
+            types.return_type(dsl.primitives[s][0]) == target_type
+            if s in dsl.primitives
+            else arg_types[int(s[len("var") :])]
+        ),
     )
 
 

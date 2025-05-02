@@ -60,7 +60,6 @@ def __get_base_grammar__(
     dsl: DSL,
     evaluator: Evaluator,
     max_size: int,
-    rtype: str | None,
     base_automaton_file: str,
     type_req: str,
 ):
@@ -70,11 +69,7 @@ def __get_base_grammar__(
         grammar = grammar_by_saturation(
             dsl,
             type_req,
-            [
-                commutativity_constraint(
-                    dsl, commutatives, rtype if rtype is not None else "none"
-                )
-            ],
+            [commutativity_constraint(dsl, commutatives, type_req)],
         )
     else:
         base_grammar = load_automaton_from_file(base_automaton_file)
@@ -107,7 +102,7 @@ def prune(
         base_automaton_file is None or len(base_automaton_file) == 0
     )
     grammar, base_expected_trees, enum_ntrees = __get_base_grammar__(
-        has_base_grammar, dsl, evaluator, max_size, rtype, base_automaton_file, type_req
+        has_base_grammar, dsl, evaluator, max_size, base_automaton_file, type_req
     )
     base_ntrees = sum(base_expected_trees.values())
 
