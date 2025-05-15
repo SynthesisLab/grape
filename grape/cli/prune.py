@@ -6,6 +6,7 @@ from grape.automaton.automaton_manager import dump_automaton_to_file
 from grape.cli import dsl_loader
 from grape.program import Primitive, Variable
 from grape.evaluator import Evaluator
+from grape.pruning.equivalence_class_manager import EquivalenceClassManager
 from grape.pruning.obs_equiv_pruner import prune
 
 
@@ -78,6 +79,12 @@ def parse_args():
         type=str,
         help="your starting automaton file",
     )
+    parser.add_argument(
+        "--classes",
+        type=str,
+        default=None,
+        help="save equivalence classes ina JSON file",
+    )
 
     return parser.parse_args()
 
@@ -90,9 +97,11 @@ def main():
     inputs = sample_inputs(args.samples, sample_dict, equal_dict)
 
     evaluator = Evaluator(dsl, inputs, equal_dict, skip_exceptions)
+    manager = EquivalenceClassManager()
     grammar, type_req = prune(
         dsl,
         evaluator,
+        manager,
         args.size,
         target_type,
         args.automaton,
@@ -109,6 +118,10 @@ def main():
     dsl.check_all_primitives_present(grammar)
 
     dump_automaton_to_file(grammar, args.output)
+
+    if args.classes is not None:
+        with open(args.classes, "w") as fd:
+            fd.write(manager.to_json())
 
 
 if __name__ == "__main__":

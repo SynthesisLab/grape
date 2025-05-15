@@ -2,6 +2,7 @@ from typing import Generator, TypeVar
 from grape.dsl import DSL
 from grape.evaluator import Evaluator
 from grape.program import Function, Primitive, Program, Variable
+from grape.pruning.equivalence_class_manager import EquivalenceClassManager
 import grape.types as types
 
 T = TypeVar("T")
@@ -26,15 +27,17 @@ def __produce_all_variants__(
             current[i] += 1
 
 
-def get_rewrites(
-    dsl: DSL, primitive: str, swapped_indices: tuple[int, int]
-) -> list[tuple[Program, Program, str]]:
-    constraints: list[tuple[Program, Program, str]] = []
-    stype = dsl[primitive][0]
+def __add_rewrite__(
+    dsl: DSL,
+    primitive: str,
+    swapped_indices: tuple[int, int],
+    manager: EquivalenceClassManager,
+):
+    stype = dsl.primitives[primitive][0]
     args_type, _ = types.parse(stype)
     swapped_type = args_type[swapped_indices[0]]
 
-    nargs = len(types.arguments(dsl.primitives[primitive]))
+    nargs = len(types.arguments(dsl.primitives[primitive][0]))
 
     for p1, (stype1, _) in dsl.primitives.copy().items():
         args1, rtype1 = types.parse(stype1)
@@ -73,7 +76,7 @@ def get_rewrites(
             )
             equiv_to.arguments[swapped_indices[0]] = second_arg
             equiv_to.arguments[swapped_indices[1]] = first_arg
-            constraints.append((deleted, equiv_to))
+            manager.add_merge(deleted, equiv_to)
         # Add additional constraint for variable type
 
         second_arg = Variable(swapped_indices[0])
@@ -84,14 +87,11 @@ def get_rewrites(
         equiv_to = Function(Primitive(primitive), [Variable(i) for i in range(nargs)])
         equiv_to.arguments[swapped_indices[0]] = second_arg
         equiv_to.arguments[swapped_indices[1]] = first_arg
-        constraints.append((deleted, equiv_to))
-
-    return constraints
+        manager.add_merge(deleted, equiv_to)
 
 
 def prune(
-    dsl: DSL,
-    evaluator: Evaluator,
+    dsl: DSL, evaluator: Evaluator, manager: EquivalenceClassManager
 ) -> list[tuple[str, list[int]]]:
     commutatives = []
     for prim, (stype, _) in dsl.primitives.items():
@@ -117,8 +117,10 @@ def prune(
                 continue
             variant = Function(Primitive(prim), new_args)
             if evaluator.eval(variant, stype) is not None:
+                swapped = [i for i, x in enumerate(new_args) if x.no != i]
                 commutatives.append(
                     (prim, [i for i, x in enumerate(new_args) if x.no != i])
                 )
+                __add_rewrite__(dsl, prim, (swapped[0], swapped[1]), manager)
     evaluator.clean_memoisation()
     return commutatives

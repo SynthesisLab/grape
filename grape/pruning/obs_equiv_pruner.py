@@ -15,6 +15,7 @@ from grape.automaton_generator import (
 )
 from grape.automaton.tree_automaton import DFTA
 import grape.pruning.commutativity_pruner as commutativity_pruner
+from grape.pruning.equivalence_class_manager import EquivalenceClassManager
 import grape.types as types
 
 from tqdm import tqdm
@@ -59,13 +60,14 @@ def __get_base_grammar__(
     has_base_grammar: bool,
     dsl: DSL,
     evaluator: Evaluator,
+    manager: EquivalenceClassManager,
     max_size: int,
     base_automaton_file: str,
     type_req: str,
 ):
     base_grammar = grammar_by_saturation(dsl, type_req)
     if not has_base_grammar:
-        commutatives = commutativity_pruner.prune(dsl, evaluator)
+        commutatives = commutativity_pruner.prune(dsl, evaluator, manager)
         grammar = grammar_by_saturation(
             dsl,
             type_req,
@@ -89,6 +91,7 @@ def __get_base_grammar__(
 def prune(
     dsl: DSL,
     evaluator: Evaluator,
+    manager: EquivalenceClassManager,
     max_size: int,
     rtype: str | None,
     base_automaton_file: str,
@@ -102,7 +105,13 @@ def prune(
         base_automaton_file is None or len(base_automaton_file) == 0
     )
     grammar, base_expected_trees, enum_ntrees = __get_base_grammar__(
-        has_base_grammar, dsl, evaluator, max_size, base_automaton_file, type_req
+        has_base_grammar,
+        dsl,
+        evaluator,
+        manager,
+        max_size,
+        base_automaton_file,
+        type_req,
     )
     base_ntrees = sum(base_expected_trees.values())
 
@@ -142,6 +151,8 @@ def prune(
             program = gen.send(should_keep)
             representative = evaluator.eval(program, type_req)
             should_keep = representative is None
+            if not should_keep:
+                manager.add_merge(program, representative)
             n += 1
             if n & 15 == 0:
                 pbar.update(16)
