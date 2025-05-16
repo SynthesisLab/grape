@@ -1,4 +1,5 @@
 import argparse
+from grape.automaton import spec_manager
 from grape.automaton.automaton_manager import (
     load_automaton_from_file,
 )
@@ -24,7 +25,7 @@ def main():
     old_rules = dfta.rules.copy()
     dfta.reduce()
 
-    specialized = "var0" in set(map(str, dfta.alphabet))
+    specialized = spec_manager.is_specialized(dfta)
 
     print("terminals:", len(dfta.alphabet))
     print("states:", len(dfta.all_states))

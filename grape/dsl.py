@@ -1,6 +1,7 @@
 from typing import Any, Callable, TypeVar, overload
 import sys
 from grape import types
+from grape.automaton import spec_manager
 from grape.automaton.tree_automaton import DFTA
 from grape.program import Primitive, Program
 
@@ -50,10 +51,11 @@ class DSL:
         self, automaton: DFTA[T, str | Program], type_req: str | None = None
     ) -> dict[T, str]:
         """
-        type_req is necessary if automaton is specialized
+        Get a mapping from states to types.
+        type_req is necessary if automaton is specialized.
         """
         # Assumes types variants are not present.
-        specialized = "var0" in set(map(str, automaton.alphabet))
+        specialized = spec_manager.is_specialized(automaton)
         if specialized:
             assert type_req is not None, (
                 "type request must be specified for a specialized automaton!"
