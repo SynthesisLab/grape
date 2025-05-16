@@ -57,16 +57,6 @@ def specialize(
         )
 
 
-@overload
-def is_specialized(grammar: DFTA[T, str]) -> bool:
-    pass
-
-
-@overload
-def is_specialized(grammar: DFTA[T, Program]) -> bool:
-    pass
-
-
 def is_specialized(grammar: DFTA[T, str] | DFTA[T, Program]) -> bool:
     """
     Returns true if this grammar is specialized.
