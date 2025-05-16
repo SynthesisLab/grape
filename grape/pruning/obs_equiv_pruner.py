@@ -1,7 +1,12 @@
 from collections import defaultdict
 import math
-from typing import Callable
-from grape.automaton.spec_manager import specialize
+from typing import Any, Callable
+from grape.automaton.spec_manager import (
+    despecialize,
+    is_specialized,
+    specialize,
+    type_request_from_specialized,
+)
 from grape.dsl import DSL
 from grape.enumerator import Enumerator
 from grape.evaluator import Evaluator
@@ -61,7 +66,7 @@ def __get_base_grammar__(
     max_size: int,
     base_dfta: DFTA | None,
     type_req: str,
-):
+) -> tuple[DFTA[Any, Program], dict[int, int]]:
     base_grammar = grammar_by_saturation(dsl, type_req)
     if base_dfta is None:
         commutatives = commutativity_pruner.prune(dsl, evaluator, manager)
@@ -71,17 +76,21 @@ def __get_base_grammar__(
             [commutativity_constraint(dsl, commutatives, type_req)],
         )
     else:
-        base_grammar = dsl.map_to_variants(base_dfta)
+        base_grammar = base_dfta
+        if is_specialized(base_grammar):
+            tr = type_request_from_specialized(base_dfta, dsl)
+            base_grammar = despecialize(base_dfta, tr)
+        base_grammar = dsl.map_to_variants(base_grammar)
         base_grammar = specialize(base_grammar, type_req, dsl)
-        base_grammar = base_grammar.map_alphabet(
-            lambda x: Variable(int(x[len("var") :]))
+        # alphabet is potentially str so convert it
+        grammar = base_grammar.map_alphabet(
+            lambda x: Variable(int(str(x)[len("var") :]))
             if str(x).startswith("var")
-            else Primitive(x)
+            else Primitive(str(x))
         )
-        grammar = base_grammar
+
     base_trees_by_size = base_grammar.trees_by_size(max_size)
-    enum_ntrees = grammar.trees_until_size(max_size)
-    return grammar, base_trees_by_size, enum_ntrees
+    return grammar, base_trees_by_size
 
 
 def prune(
@@ -96,7 +105,7 @@ def prune(
     type_req = __infer_mega_type_req__(
         dsl.primitives, rtype, max_size, set(evaluator.base_inputs.keys())
     )
-    grammar, base_expected_trees, enum_ntrees = __get_base_grammar__(
+    grammar, base_expected_trees = __get_base_grammar__(
         dsl,
         evaluator,
         manager,
@@ -104,6 +113,7 @@ def prune(
         base_grammar,
         type_req,
     )
+    enum_ntrees = grammar.trees_until_size(max_size)
     base_ntrees = sum(base_expected_trees.values())
 
     enumerator = Enumerator(grammar)
