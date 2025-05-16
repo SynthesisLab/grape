@@ -178,6 +178,3 @@ class DSL:
 
     def merge_type_variants(self, grammar: DFTA[T, Program]) -> DFTA[T, Program]:
         return grammar.map_alphabet(lambda x: self.to_merge.get(x, x))
-
-    def has_type_variants(self, grammar: DFTA[T, Program]) -> bool:
-        return any(TYPE_SEP in s for s in set(map(str, grammar.alphabet)))
