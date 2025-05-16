@@ -38,6 +38,16 @@ class DSL:
     def __name_variant__(self, primitive: str, str_type: str) -> str:
         return f"{primitive}{TYPE_SEP}{str_type}"
 
+    def get_type(self, primitive: str) -> str:
+        """
+        Get the type of the specified primitive.
+        Works both with and without variants.
+        """
+        if TYPE_SEP in primitive:
+            return self.primitives[primitive][0]
+        else:
+            return self.original_primitives[primitive]
+
     def max_arity(self) -> int:
         return max(len(types.arguments(t)) for t, _ in self.primitives.values())
 
@@ -47,9 +57,7 @@ class DSL:
     def semantic(self, primitive: str) -> Any:
         return self.eval[primitive]
 
-    def get_state_types(
-        self, automaton: DFTA[T, str | Program], type_req: str | None = None
-    ) -> dict[T, str]:
+    def get_state_types(self, automaton: DFTA[T, str | Program]) -> dict[T, str]:
         """
         Get a mapping from states to types.
         type_req is necessary if automaton is specialized.
@@ -57,10 +65,9 @@ class DSL:
         # Assumes types variants are not present.
         specialized = spec_manager.is_specialized(automaton)
         if specialized:
-            assert type_req is not None, (
-                "type request must be specified for a specialized automaton!"
+            arg_types = types.arguments(
+                spec_manager.type_request_from_specialized(automaton, self)
             )
-            arg_types = types.arguments(type_req)
 
         state_to_type: dict[Any, str] = {}
         elements = list(automaton.rules.items())
@@ -71,9 +78,9 @@ class DSL:
             elif specialized and str(P).startswith("var"):
                 Ptype = arg_types[int(str(P)[len("var") :])]
             elif specialized:
-                Ptype = self.primitives[str(P)][0]
+                Ptype = self.get_type(str(P))
             else:
-                base_Ptype = self.original_primitives[str(P)]
+                base_Ptype = self.get_type(str(P))
                 all_possibles = types.all_variants(base_Ptype)
                 for i, arg_state in enumerate(args):
                     if arg_state not in state_to_type:
@@ -110,6 +117,8 @@ class DSL:
     ) -> DFTA[T, Program] | DFTA[T, str]:
         """
         Produce the DFTA with the right type variants.
+        In other words it replaces generic primitives with their variants based on the types of the transitions.
+
         """
         state2type = self.get_state_types(automaton)
         if isinstance(list(automaton.alphabet)[0], str):
@@ -169,3 +178,6 @@ class DSL:
 
     def merge_type_variants(self, grammar: DFTA[T, Program]) -> DFTA[T, Program]:
         return grammar.map_alphabet(lambda x: self.to_merge.get(x, x))
+
+    def has_type_variants(self, grammar: DFTA[T, Program]) -> bool:
+        return any(TYPE_SEP in s for s in set(map(str, grammar.alphabet)))

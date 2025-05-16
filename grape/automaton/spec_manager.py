@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import TypeVar, overload
 
 from grape import types
@@ -62,6 +63,40 @@ def is_specialized(grammar: DFTA[T, str] | DFTA[T, Program]) -> bool:
     Returns true if this grammar is specialized.
     """
     return "var0" in set(map(str, grammar.alphabet))
+
+
+def type_request_from_specialized(
+    grammar: DFTA[T, str] | DFTA[T, Program], dsl: DSL
+) -> str:
+    """
+    Returns the type request of this specialized grammar.
+    Disclaimer: does not compute the return type only the arguments type.
+    """
+    # Guess variable type
+    states_by_var = defaultdict(set)
+    for (P, args), dst in grammar.rules.items():
+        if str(P).startswith("var"):
+            varno = int(str(P)[len("var") :])
+            states_by_var[varno].add(dst)
+
+    varno_to_type = {}
+
+    for varno, states in states_by_var.items():
+        possibles = None
+        for (P, args), dst in grammar.rules.items():
+            if str(P).startswith("var"):
+                continue
+            for arg, arg_type in zip(args, types.arguments(dsl.get_type(str(P)))):
+                if arg in states:
+                    here = types.all_variants(arg_type)
+                    if possibles is None:
+                        possibles = set(here)
+                    else:
+                        possibles.intersection_update(here)
+        assert possibles is not None
+        varno_to_type[varno] = "|".join(possibles)
+    varlen = max(varno_to_type.keys())
+    return "->".join([varno_to_type[i] for i in range(varlen + 1)]) + "-> none"
 
 
 @overload

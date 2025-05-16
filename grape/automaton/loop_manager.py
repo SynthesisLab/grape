@@ -124,7 +124,7 @@ def add_loops(
         # In order to make the automaton loop
         # 1) All unconsumed must be consumed
         # 2) Programs of all produced types must have unbounded size
-        state_to_type = dsl.get_state_types(dfta, type_request)
+        state_to_type = dsl.get_state_types(dfta)
         state_to_letter = {s: dfta.reversed_rules[s][0][0] for s in state_to_type}
         prod_types_by_state = __prod_types_by_states(dfta, state_to_type)
         all_types = set(state_to_type.values())
