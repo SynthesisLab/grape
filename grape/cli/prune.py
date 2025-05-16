@@ -118,7 +118,6 @@ def main():
         reduced_grammar,
         dsl,
         LoopStrategy.NO_LOOP if args.no_loop else LoopStrategy.STATE,
-        type_req,
     )
 
     types.check_automaton(grammar, dsl, type_req)

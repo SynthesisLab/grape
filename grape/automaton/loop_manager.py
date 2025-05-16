@@ -111,7 +111,6 @@ def add_loops(
     dfta: DFTA[str, str],
     dsl: DSL,
     strategy: LoopStrategy,
-    type_request: str | None = None,
 ) -> DFTA[str, str]:
     """
     Assumes one state is from one letter
