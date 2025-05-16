@@ -146,7 +146,9 @@ class DFTA(Generic[U, V]):
 
     def read_intersection(self, other: "DFTA[W, V]") -> "DFTA[tuple[U, W], V]":
         new_finals = set(el for el in itertools.product(self.finals, other.finals))
-        return DFTA(self.__product_rules__(other), new_finals)
+        d = DFTA(self.__product_rules__(other), new_finals)
+        d.reduce()
+        return d
 
     def read_union(self, other: "DFTA[W, V]") -> "DFTA[tuple[U, W], V]":
         new_finals = set(
