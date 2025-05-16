@@ -1,31 +1,33 @@
 from collections import defaultdict
-from typing import TypeVar, overload
+from typing import TYPE_CHECKING, TypeVar, overload
 
 from grape import types
 from grape.automaton.tree_automaton import DFTA
-from grape.dsl import DSL
 from grape.program import Primitive, Program, Variable
 
+# Solve circular import problem
+if TYPE_CHECKING:
+    from grape.dsl import DSL
 
 T = TypeVar("T")
 
 
 @overload
 def specialize(
-    grammar: DFTA[T, str], type_req: str, syntax: DSL | None
+    grammar: DFTA[T, str], type_req: str, syntax: "DSL | None"
 ) -> DFTA[T, str]:
     pass
 
 
 @overload
 def specialize(
-    grammar: DFTA[T, Program], type_req: str, syntax: DSL | None
+    grammar: DFTA[T, Program], type_req: str, syntax: "DSL | None"
 ) -> DFTA[T, Program]:
     pass
 
 
 def specialize(
-    grammar: DFTA[T, str] | DFTA[T, Program], type_req: str, syntax: DSL | None
+    grammar: DFTA[T, str] | DFTA[T, Program], type_req: str, syntax: "DSL | None"
 ) -> DFTA[T, str] | DFTA[T, Program]:
     if isinstance(list(grammar.alphabet)[0], str):
 
@@ -66,7 +68,7 @@ def is_specialized(grammar: DFTA[T, str] | DFTA[T, Program]) -> bool:
 
 
 def type_request_from_specialized(
-    grammar: DFTA[T, str] | DFTA[T, Program], dsl: DSL
+    grammar: DFTA[T, str] | DFTA[T, Program], dsl: "DSL"
 ) -> str:
     """
     Returns the type request of this specialized grammar.
