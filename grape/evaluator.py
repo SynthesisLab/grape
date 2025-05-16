@@ -34,13 +34,12 @@ class Evaluator:
         self.prng = random.Random(seed)
 
     def clean_memoisation(self) -> None:
-        self.memoization = {}
+        self.memoization.clear()
 
     def free_memory(self) -> None:
-        del self.dsl
-        del self.equiv_classes
-        del self.memoization
-        del self.full_inputs
+        self.equiv_classes.clear()
+        self.memoization.clear()
+        self.full_inputs.clear()
 
     def __gen_full_inputs__(self, type_req: str) -> None:
         if type_req not in self.full_inputs:
