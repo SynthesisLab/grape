@@ -2,7 +2,10 @@ import argparse
 from typing import Callable
 from tqdm import tqdm
 from grape import types
-from grape.automaton.automaton_manager import dump_automaton_to_file
+from grape.automaton.automaton_manager import (
+    dump_automaton_to_file,
+    load_automaton_from_file,
+)
 from grape.cli import dsl_loader
 from grape.program import Primitive, Variable
 from grape.evaluator import Evaluator
@@ -98,13 +101,17 @@ def main():
 
     evaluator = Evaluator(dsl, inputs, equal_dict, skip_exceptions)
     manager = EquivalenceClassManager()
+    base_grammar = None
+    base_aut_file: str = args.automaton or ""
+    if len(base_aut_file) > 0:
+        base_grammar = load_automaton_from_file(base_aut_file)
     grammar, type_req = prune(
         dsl,
         evaluator,
         manager,
         args.size,
         target_type,
-        args.automaton,
+        base_grammar,
         args.no_loop,
     )
 

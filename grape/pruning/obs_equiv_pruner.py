@@ -57,16 +57,15 @@ def __infer_mega_type_req__(
 
 
 def __get_base_grammar__(
-    has_base_grammar: bool,
     dsl: DSL,
     evaluator: Evaluator,
     manager: EquivalenceClassManager,
     max_size: int,
-    base_automaton_file: str,
+    base_dfta: DFTA | None,
     type_req: str,
 ):
     base_grammar = grammar_by_saturation(dsl, type_req)
-    if not has_base_grammar:
+    if base_dfta is None:
         commutatives = commutativity_pruner.prune(dsl, evaluator, manager)
         grammar = grammar_by_saturation(
             dsl,
@@ -74,8 +73,7 @@ def __get_base_grammar__(
             [commutativity_constraint(dsl, commutatives, type_req)],
         )
     else:
-        base_grammar = load_automaton_from_file(base_automaton_file)
-        base_grammar = dsl.map_to_variants(base_grammar)
+        base_grammar = dsl.map_to_variants(base_dfta)
         base_grammar = specialize(base_grammar, type_req, dsl)
         base_grammar = base_grammar.map_alphabet(
             lambda x: Variable(int(x[len("var") :]))
@@ -93,24 +91,20 @@ def prune(
     evaluator: Evaluator,
     manager: EquivalenceClassManager,
     max_size: int,
-    rtype: str | None,
-    base_automaton_file: str,
+    rtype: str | None = None,
+    base_grammar: DFTA | None = None,
     no_loop: bool = False,
 ) -> tuple[DFTA[str, Program], str]:
     # Find all type requests
     type_req = __infer_mega_type_req__(
         dsl.primitives, rtype, max_size, set(evaluator.base_inputs.keys())
     )
-    has_base_grammar = not (
-        base_automaton_file is None or len(base_automaton_file) == 0
-    )
     grammar, base_expected_trees, enum_ntrees = __get_base_grammar__(
-        has_base_grammar,
         dsl,
         evaluator,
         manager,
         max_size,
-        base_automaton_file,
+        base_grammar,
         type_req,
     )
     base_ntrees = sum(base_expected_trees.values())
