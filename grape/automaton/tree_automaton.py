@@ -152,7 +152,9 @@ class DFTA(Generic[U, V]):
         new_finals = set(
             el for el in itertools.product(self.finals, other.states)
         ) | set(el for el in itertools.product(self.states, other.finals))
-        return DFTA(self.__product_rules__(other), new_finals)
+        d = DFTA(self.__product_rules__(other), new_finals)
+        d.reduce()
+        return d
 
     def __get_consumed__(self) -> Set[U]:
         consumed: Set[U] = {q for q in self.finals}
