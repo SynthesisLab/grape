@@ -16,7 +16,7 @@ def return_type(type_req: str) -> str:
 
 
 def arguments(type_req: str) -> tuple[str, ...]:
-    return tuple(map(lambda x: x.strip(), type_req.split("->")[:-1]))
+    return parse(type_req)[0]
 
 
 def parse(type_req: str) -> tuple[tuple[str, ...], str]:

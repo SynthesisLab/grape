@@ -1,4 +1,10 @@
-from grape.types import annotations_to_type_str
+from grape.types import (
+    annotations_to_type_str,
+    return_type,
+    arguments,
+    parse,
+    all_variants,
+)
 
 
 def test_constants_annotation():
@@ -34,3 +40,21 @@ def test_custom_types_annotation():
 
     assert annotations_to_type_str(f) == "int -> ClassA -> str -> ClassB"
     assert annotations_to_type_str(g) == "ClassA -> ClassB -> ClassA -> ClassB"
+
+
+def test_return_type():
+    assert return_type("a -> b") == "b"
+    assert return_type("a -> b -> c") == "c"
+    assert return_type("a -> b -> c | d") == "c | d"
+
+
+def test_arguments():
+    assert arguments("a -> b") == ("a",)
+    assert arguments("a -> b -> c") == ("a", "b")
+    assert arguments("a -> b -> c | d") == ("a", "b")
+
+
+def test_all_variants():
+    assert all_variants("a -> b") == ["a->b"]
+    assert all_variants("a -> b | c") == ["a->b", "a->c"]
+    assert all_variants("'a [b|c] -> 'a -> c") == ["b->b->c", "c->c->c"]
