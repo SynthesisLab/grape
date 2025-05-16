@@ -1,8 +1,6 @@
 from collections import defaultdict
 import math
 from typing import Callable
-from grape.automaton.automaton_manager import load_automaton_from_file
-from grape.automaton.loop_manager import LoopStrategy, add_loops
 from grape.automaton.spec_manager import specialize
 from grape.dsl import DSL
 from grape.enumerator import Enumerator
@@ -93,7 +91,6 @@ def prune(
     max_size: int,
     rtype: str | None = None,
     base_grammar: DFTA | None = None,
-    no_loop: bool = False,
 ) -> tuple[DFTA[str, Program], str]:
     # Find all type requests
     type_req = __infer_mega_type_req__(
@@ -162,12 +159,6 @@ def prune(
     evaluator.free_memory()
     reduced_grammar, t = grammar_from_memory(
         enumerator.memory, type_req, grammar.finals
-    )
-    reduced_grammar = add_loops(
-        reduced_grammar,
-        dsl,
-        LoopStrategy.NO_LOOP if no_loop else LoopStrategy.STATE,
-        type_req,
     )
     print("at size:", max_size)
     print(
