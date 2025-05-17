@@ -88,16 +88,16 @@ def type_request_from_specialized(
         for (P, args), dst in grammar.rules.items():
             if str(P).startswith("var"):
                 continue
+            local = []
             for variant_type in types.all_variants(dsl.get_type(str(P))):
-                local = []
                 for arg, arg_type in zip(args, types.arguments(variant_type)):
                     if arg in states:
                         local.append(arg_type)
-                if local:
-                    if possibles is None:
-                        possibles = set(local)
-                    else:
-                        possibles.intersection_update(local)
+            if local:
+                if possibles is None:
+                    possibles = set(local)
+                else:
+                    possibles.intersection_update(local)
         assert possibles is not None
         varno_to_type[varno] = "|".join(possibles)
     varlen = max(varno_to_type.keys())
