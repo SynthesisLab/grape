@@ -65,9 +65,8 @@ class DSL:
         # Assumes types variants are not present.
         specialized = spec_manager.is_specialized(automaton)
         if specialized:
-            arg_types = types.arguments(
-                spec_manager.type_request_from_specialized(automaton, self)
-            )
+            guessed_tr = spec_manager.type_request_from_specialized(automaton, self)
+            arg_types = types.arguments(guessed_tr)
 
         state_to_type: dict[Any, str] = {}
         elements = list(automaton.rules.items())
@@ -99,7 +98,10 @@ class DSL:
                     )
                     Ptype = all_possibles.pop()
             if dst in state_to_type:
-                assert state_to_type[dst] == types.return_type(Ptype)
+                all_types = set()
+                for variant in types.all_variants(Ptype):
+                    all_types.add(types.return_type(variant))
+                assert state_to_type[dst] in all_types
             else:
                 state_to_type[dst] = types.return_type(Ptype)
         return state_to_type
