@@ -118,7 +118,6 @@ def add_loops(
                     for new_args in itertools.product(*possibles):
                         if dst in new_args and (P, new_args) not in new_dfta.rules:
                             new_dfta.rules[(P, new_args)] = new_dst
-                            print("adding:", (P, new_args), new_dst)
                 max_varno += 1
         new_dfta.refresh_reversed_rules()
         i = 0
