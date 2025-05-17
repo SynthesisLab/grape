@@ -1,31 +1,30 @@
-# GRAmmar for Program synthEsis (GRAPE)
+````markdown
+# Grammar for Program Synthesis (GRAPE)
 
-This tools aims to make it easy to manipulate grammars for program synthesis.
+This tool aims to simplify the manipulation of grammars for program synthesis.
 
-It has the following features:
+It offers the following features:
 
-- ``grape-compile``: produce a grammar from a basic DSL with size or/and depth constraints
-- ``grape-convert``: convert a grammar into another format
-- ``grape-count``: count the number of programs in a grammar up to a specific size
-- ``grape-enum``: print all programs in a grammar up to a specific size
-- ``grape-info``: provides basic information about a given grammar
-- ``grape-intersection``: produce the intersection of two grammars when reading the same letter
-- ``grape-union``: produce the union of two grammars when reading the same letter
-- ``grape-prune``: produce a pruned grammar by removing redundant programs
-- ``grape-specialize``: specialize a generic grammar to a specific type request
-- ``grape-despecialize``: despecialize a generic grammar from a specific type request
+- `grape-compile`: Generates a grammar from a basic Domain Specific Language (DSL) with size and/or depth constraints.
+- `grape-convert`: Converts a grammar into another format.
+- `grape-count`: Counts the number of programs in a grammar up to a specified size.
+- `grape-enum`: Enumerates all programs in a grammar up to a specified size.
+- `grape-info`: Provides basic information about a given grammar.
+- `grape-intersection`: Produces the intersection of two grammars based on the same input symbols.
+- `grape-union`: Produces the union of two grammars based on the same input symbols.
+- `grape-prune`: Generates a pruned grammar by removing semantically redundant programs.
+- `grape-specialize`: Specializes a generic grammar to a specific type request.
+- `grape-despecialize`: Despecializes a generic grammar from a specific type request.
 
-Supported grammar formats:
+**Supported Grammar Formats:**
 
-- ``.grape``: our own format, the advantage is that there is only one special character ``,`` and it is trivial to parse
-- ``.ebnf``: EBNF format, the subset for bottom-up tree automata (each rule must start with a terminal)
-- ``.lark``: Lark format, the subset for bottom-up tree automata (each rule must start with a terminal)
+- `.grape`: Our custom format. Its advantage lies in having only one special character (`,`), making it straightforward to parse.
+- `.ebnf`: Extended Backus-Naur Form (EBNF), supporting a subset for bottom-up tree automata (where each rule must start with a terminal).
+- `.lark`: Lark format, also supporting a subset for bottom-up tree automata (where each rule must start with a terminal).
 
-We highly recommend using the ``grape`` format as long as possible since it works flawlessly rather than the other formats which are partially supported due to the goal of the project.
-In other words, it is best to use other formats just as export formats.
+We strongly recommend using the `.grape` format whenever possible, as it offers seamless functionality. The other formats are partially supported primarily for export purposes, reflecting the project's focus.
 
-**Table of contents**:
-<!-- TOC START -->
+**Table of Contents:**
 - [Installation](#installation)
 - [Example](#example)
 - [Pruning](#pruning)
@@ -34,41 +33,39 @@ In other words, it is best to use other formats just as export formats.
 - [Type System](#type-system)
 - [GRAPE Format](#grape-format)
 
-<!-- TOC END -->
-
 ## Installation
 
 ```sh
-pip install git+https://github.com/SynthesisLab/grape.git
-```
+pip install git+[https://github.com/SynthesisLab/grape.git](https://github.com/SynthesisLab/grape.git)
+````
 
 ## Example
 
-Let us assume you have the following ``dsl.py`` file:
+Let's consider the following `dsl.py` file:
 
 ```python
 from typing import Callable
 import random
 
-MAXI = 1 << 32 - 1
+MAXI = (1 << 32) - 1
 random.seed(1)
 
-# Given a type provides a function to sample one element
-sample_dict: dict[str, Callable] = {"int": lambda: int(random.randint(-MAXI, MAXI))}
+# Given a type, provides a function to sample one element
+sample_dict: dict[str, Callable] = {"int": lambda: random.randint(-MAXI, MAXI)}
 
-# Given a primitive provides a tuple (type, implementation)
-# supported types are:
-#   - primitive: just give it a name and you are good to go!
-#   - sum types: a | b can either be a or b
-#   - polymorphics: 'a [ t1 | t2 ] -> 'a
-#       syntax: must start with a "'"
-#               the list of supported types must be given at 1st usage inside the []
-#       semantic: the above example means either: t1 -> t1 or t2 -> t2 
-#                 but t1 -> t2 and t2 -> t1 are impossibles 
-#                 because all instanciations of 'a must have the same value
-#                 at any given time
+# Given a primitive, provides a tuple (type, implementation)
+# Supported types are:
+#   - primitive: simply provide its name.
+#   - sum types: 'a | b' can be either 'a' or 'b'.
+#   - polymorphics: "'a [ t1 | t2 ] -> 'a'"
+#     syntax: must start with a "'"
+#             the list of supported types must be given at the first usage within '[]'
+#     semantic: the example above means either: 't1 -> t1' or 't2 -> t2'
+#               't1 -> t2' and 't2 -> t1' are not possible
+#               because all instantiations of 'a' must have the same value
+#               at any given time.
 # Also supports functions with basic type hints: the type is inferred from the annotations.
-# Similarly, the type of constants 
+# Similarly, the type of constants is inferred.
 def add(x: int, y: int) -> int:
     return x + y
 
@@ -83,38 +80,38 @@ dsl: dict[str, tuple[str, Callable]] = {
     "1": ("int", 1)
 }
 
-# (Optional) Every element underneath is OPTIONAL
-# In other words you can omit them without error
+# (Optional) All elements below are OPTIONAL.
+# In other words, you can omit them without causing an error.
 
-# Type of object you want to produce, if not specified all types can be generated
+# Type of object you want to produce. If not specified, all types can be generated.
 target_type: str = "int"
 
-# Set of errors which will not trigger but cause the program to return None
+# Set of exceptions that will not terminate the process but cause the program to return None.
 skip_exceptions: set = {OverflowError}
 ```
 
-Then you can run all the commands you like with this DSL.
+You can then execute various commands using this DSL.
 
 ## Pruning
 
-Given a domain specific language (DSL), the goal of this tool is to automatically find the semantically redundant programs.
+Given a Domain Specific Language (DSL), this tool aims to automatically identify semantically redundant programs.
 
-Take for example: ``x, -x, - (-x)``, ``- (-x)`` is redundant since it evaluates to ``x`` whatever the ``x`` value.
+For instance, consider: `$x, -x, -(-x)$`. Here, $-(-x)$ is redundant because it evaluates to $x$ regardless of the value of $x$.
 
-This tool offers automatically finding these redundancies by evaluating the programs.
-It works by enumerating program by increasing size until a maximum target size, each enumerated program is evaluated on sampled inputs.
-The evaluation of a program on the set of inputs is its characteristic sequence, two programs that have the same characteristic sequences are redundant, therefore only the smallest program is kept.
+This tool automatically detects such redundancies by evaluating programs on a set of sampled inputs. The evaluation of a program across these inputs yields its characteristic sequence. Two programs with identical characteristic sequences are considered semantically equivalent, and consequently, only the smallest program is retained.
 
-Currently, this redundant information is compiled by the tool to produce:
+Currently, this redundancy information is compiled by the tool to produce:
 
-- a deterministic bottom-up tree automaton, which can trivially be converted into a context-free grammar for example;
-- a set of program rewrites
+  - A deterministic bottom-up tree automaton, which can be easily converted into a context-free grammar.
+  - A set of program rewrites.
+
+<!-- end list -->
 
 ```sh
 grape-prune dsl.py --size 5 --samples 50
 ```
 
-The output I have on my machine is the following:
+The output observed on a machine might be similar to the following:
 
 ```text
 sampling: 100%|█████████████████████████████████████████████| 100/100 [00:00<00:00, 183718.97it/s, int]
@@ -132,9 +129,9 @@ at size: 5
     no pruning: 100.00% | 188.98% | 260.22%
     commutativity pruned: 52.92% | 100.00% | 137.70%
     pruned: 38.43% | 72.62% | 100.00%
- ```
+```
 
-Some explanations:
+**Explanation of the Output:**
 
 ```text
 at size: 5
@@ -142,14 +139,13 @@ at size: 5
     commutativity pruned: 5.49e+03 (52.92%)
 ```
 
-This indicates the size gained by early checking for commutativity, the number of programs that will be enumerated is ``5.49e+03``, it is a good indication of time that the algorithm will take even though it is highly DSL dependent.
+This section indicates the reduction in the number of programs achieved by initially checking for commutativity. The number of programs to be enumerated is reduced to approximately $5.49 \\times 10^3$. While highly DSL-dependent, this provides a good estimate of the algorithm's runtime.
 
 ```text
 obs. equivalence: 6.620e+02 pruned: 8.070e+02 (121.90%)
 ```
 
-These numbers indicate mostly how much an over-approximation of the truly semantically equivalent programs we built, here it is ``121.90%`` so it contains ``21.90%`` more programs given the same conditions.
-It is mostly indicative and do not indicate full enumeration numbers.
+These figures primarily show the extent of over-approximation in identifying truly semantically equivalent programs. Here, the over-approximation is $121.90%$, suggesting that the identified set contains $21.90%$ more programs than the actual number of unique semantic programs under the given conditions. These numbers are mostly indicative and do not represent the full enumeration counts.
 
 ```text
 at size: 5
@@ -159,15 +155,13 @@ at size: 5
     pruned: 38.43% | 72.62% | 100.00%
 ```
 
-This table compares the number of programs in the three different languages for programs of size up to 5.
-These are the relative number of programs.
-Therefore the automaton contains up to size 5 ``38.43%`` of all the programs in the naive language, and ``72.62%`` of all the programs in the language with commutativity pruned.
+This table compares the number of programs in three different scenarios (no pruning, commutativity pruning, and full pruning) for programs up to size 5. The values represent the relative number of programs. Therefore, the automaton for programs up to size 5 contains $38.43%$ of all programs in the naive language and $72.62%$ of all programs in the language with commutativity pruning.
 
 ### How it works
 
 #### Step 1
 
-First, we load your DSL as a python file and look for the following variables:
+First, your DSL is loaded as a Python file, and the following variables are searched for:
 
 ```text
 sample_dict
@@ -178,106 +172,81 @@ skip_exceptions (optional)
 
 ##### Sample Dict
 
-The sampling dictionary maps each type to a function taking no argument to sample elements of this type.
-By default, the tool aims to sample different inputs, but will stop if it fails after a number of tries.
-The more types that can be sampled the more properties can be checked.
+The sampling dictionary maps each type to a function that takes no arguments and returns a sample element of that type. By default, the tool aims to generate diverse inputs but will stop after a certain number of failed attempts. A wider range of samplable types allows for checking more properties.
 
-Be aware, that if your sampling depends on a pseudo random number generator, then you probably want to seed it as to get reproducible results.
+Note that if your sampling relies on a pseudo-random number generator, seeding it is advisable for reproducible results.
 
 ##### DSL
 
-This objects describes for each primitive a tuple containing its type and its semantic.
-Constants can be directly given, so there is no way currently to have functions with no arguments (that actually trigger a call).
+This object defines each primitive as a tuple containing its type and its semantic implementation. Constants can be provided directly; currently, functions without arguments that trigger a call are not supported.
 
 ##### Target Type
 
-Instead of generating everything and anything that can be generated given your DSL, you target a specific type.
-Be aware that it must be a base type (no sum type, no function, no polymorphic).
-It reduces the space of research so it can speed up the process and gives you better results.
+Instead of generating all possible programs from your DSL, you can specify a target type. This must be a base type (not a sum type, function, or polymorphic type). Specifying a target type can significantly reduce the search space and speed up the process, often yielding better results.
 
 ##### Skip Exceptions
 
-It may occur that your code triggers some exceptions during executions, they will stop the execution of the process.
-Instead, the tool will catch exceptions given in this set, the program will return ``None`` as output instead when such an exception is triggered but the tool will continue.
+During program execution, certain exceptions might occur, potentially halting the process. By providing a set of exceptions in `skip_exceptions`, the tool will catch these exceptions, and the program's output will be `None` instead, allowing the tool to continue its operation.
 
 #### Step 2
 
-The tool samples inputs for all the types sampler provided.
+The tool samples input values for all the types for which samplers are provided.
 
 #### Step 3
 
-The tool checks for commutativity.
-This check must be done manually since the automaton model used cannot order trees, it cannot forbid a+b if b+a was generated, this would imply that you can order a and b.
-Therefore we check for it manually, and approximate it under something a bit less powerful but still captures a part of commutativity.
-Let us take ``+`` which is commutative, instead we order programs based on the last primitive used (the root of the trees), only ``+ t_a t_b`` where ``t_a`` <= ``t_b`` are allowed and ``t_a``, ``t_b`` are programs/trees with functions ``a``, ``b`` as their root.
+The tool checks for commutativity. This check needs to be performed explicitly because the automaton model used cannot inherently order trees, thus it cannot automatically forbid $a+b$ if $b+a$ was generated (this would require the ability to order $a$ and $b$). Therefore, a manual, approximate check for commutativity is performed. For a commutative operation like `$+$`, programs are ordered based on the last primitive used (the root of the trees). Only `$+(t_a, t_b)$` where $t\_a \\le t\_b$ is allowed, and $t\_a$, $t\_b$ are programs/trees with functions $a$ and $b$ as their respective roots.
 
 #### Step 4
 
-The tool generate a pruned grammar based on commutativity constraints since they are fast to find and prune away a lot of programs.
-This is helpful to speed-up this part where we enumerate programs of increasing size.
-Evaluating a program on all the sampled inputs produce a set of outputs, this is what we call its characteristic sequence.
-For each program enumerated, it is evaluated, if its characteristic sequence is the same as another previously enumerated program then it is discarded because those two programs are semantically equivalent.
-Since our enumeration is done in a bottom-up manner, all expansions of redundant programs are not even considered.
+The tool generates a pruned grammar based on commutativity constraints, as these are quick to identify and can eliminate a significant number of programs, speeding up the subsequent enumeration process. For each enumerated program (up to a maximum target size), it is evaluated on all the sampled inputs. The resulting set of outputs is its characteristic sequence. If a program's characteristic sequence is identical to that of a previously enumerated program, it is discarded because the two programs are semantically equivalent. Since the enumeration is done in a bottom-up manner, the expansions of redundant programs are never even considered.
 
 #### Step 5
 
-We build an automaton from the enumerated programs that were kept.
-We found that building from programs kept is way faster than using automata product and forbidding programs.
-Note that the language described by the automaton is an over approximation.
-Since the automaton needs to be valid for any number of variables number and types, then all variables of the same types are merged, and thus some programs like ``x - x`` which were pruned must be present in the language described in the automaton, as ``x1 - x0`` may be an interesting program.
-This automaton describes a language from programs up to a fixed size.
+An automaton is built from the enumerated and retained programs. It has been observed that building the automaton from the kept programs is significantly faster than using automata product and then forbidding programs. Note that the language described by the automaton is an over-approximation. Because the automaton must be valid for any number of variables and types, all variables of the same type are merged. Consequently, some programs like `$x - x$`, which were pruned, might still be present in the automaton's language, as `$x_1 - x_0$` could represent a valid and interesting program. This automaton describes the language of programs up to a fixed size.
 
 #### Step 6
 
-This step is done only if the flag ``--no-loop`` is not given.
-We now extend the automaton to make it work for any size of programs.
-There are numerous ways to do this, however we considered a non-optimal but faster one due to the sheer combinatorial explosion of the size of the automata considered.
-The idea is to take ending states of programs of maximal size and make them loop over the maximum size.
-The idea is that a program of size ``n+1`` can be seen as two windows of programs of size ``n`` by moving slightly our window.
-There are multiple such windows, the tool chooses the most restrictive.
-The resulting automaton is reduced then minimized.
+This step is performed only if the `--no-loop` flag is not provided. The automaton is extended to handle programs of any size. While various methods exist for this, a faster, albeit non-optimal, approach is used due to the combinatorial explosion in the size of the automata being considered. The idea is to take the ending states of programs of the maximum size and make them loop over the maximum size. The rationale is that a program of size $n+1$ can be viewed as two overlapping "windows" of programs of size $n$. Multiple such windows exist, and the tool selects the most restrictive one. The resulting automaton is then reduced and minimized.
 
 #### Step 7
 
-Now we check that the automaton obtained is consistent:
+The consistency of the obtained automaton is checked:
 
-- any program that was kept during enumeration is kept in the language of the automaton
-- any primitive of the DSL is present and used by the automaton
-- all type variants of every primitives of the DSL are present and used by the automaton
+  - Any program retained during enumeration should be accepted by the automaton.
+  - Every primitive of the DSL should be present and used by the automaton.
+  - All type variations of every primitive in the DSL should be present and used by the automaton.
 
-If any of these conditions is not respected then a warning is printed ot the user as this may be intentional.
+If any of these conditions are not met, a warning is printed to the user, as this might indicate an unintended outcome.
 
 ### Additional Notes
 
-For the ``size`` parameter:
+Regarding the `size` parameter:
 
-- if it is too small you won't get all your primitives in the automaton because the max size was too small, basically for a primitive of arity ``k`` to be in the automaton, the minimal size must be ``k+1``.
-- gains decrease with increased size, and time taken increases exponentially.
-- there are some effects with ``size`` such that you can get gains that are not monotone due to the fact that very few redundant programs have been added, in that case try going to one size larger, usually you get back your improvements.
+  - If the `size` is too small, not all your primitives might be included in the automaton. For a primitive with arity $k$ to be in the automaton, the minimum `size` should be $k+1$.
+  - The benefits of increasing the `size` diminish, while the computation time increases exponentially.
+  - Non-monotonic gains with increasing `size` can occur if very few redundant programs are added at a particular size. In such cases, trying a slightly larger `size` often resolves this and yields further improvements.
 
-For the ``--no-loop`` flag:
+Regarding the `--no-loop` flag:
 
-- if you compare the number of programs up to the max size with and without the flag, you will observe that without ``no-loop`` there are slightly more programs because of the loops. It is not a bug, it is due that some programs are not of the maximum size and needs to loop, therefore producing new redundant programs because of the loops within the size bound.
+  - Comparing the number of programs up to the maximum `size` with and without the `--no-loop` flag will show slightly more programs when the flag is absent due to the introduced loops. This is not a bug; it arises because some programs are smaller than the maximum size and require looping, potentially generating new redundant programs within the size limit.
 
 ## Type System
 
-The type system is rudimentary and is not intended for complex DSL but a good contribution would be augmenting its capabilities.
-Functions are not first class citizens.
-The type system works as a simple way to produce syntactically correct programs and nothing else, there are no specific keywords.
+The type system is basic and not intended for complex DSLs, although contributions to enhance its capabilities would be welcome. Functions are not treated as first-class citizens. The type system primarily serves to ensure the generation of syntactically correct programs without enforcing deeper semantic constraints. There are no specific keywords.
 
 ```python
-# Defines a type a
-a 
-# Defines a function with two arguments the first of type a, the second of type b and returns a c
+# Defines a type 'a'
+a
+# Defines a function with two arguments: the first of type 'a', the second of type 'b', and returns a 'c'
 a -> b -> c
-# Defines a function that can be one of the following option:
+# Defines a function that can have one of the following type signatures:
 #   t1 -> t1
 #   t1 -> t2
 #   t2 -> t1
 #   t2 -> t2
-t1 | t2  -> t1 | t2
-# Defines a polymorphic type 'a, the "'" is treated as a special character for detecting this.
-# All instantiations of 'a must be the same therefore producing the following options:
+t1 | t2 -> t1 | t2
+# Defines a polymorphic type 'a'. The "'" character is a special marker for detecting this.
+# All instantiations of 'a' must be the same, resulting in the following options:
 #   t1 -> t1
 #   t2 -> t2
 'a [ t1 | t2 ] -> 'a
@@ -285,7 +254,7 @@ t1 | t2  -> t1 | t2
 
 ## GRAPE Format
 
-The grape format for the deterministic tree automaton is the following:
+The GRAPE format for the deterministic tree automaton is as follows:
 
 ```text
 finals:S0,S1
@@ -298,25 +267,23 @@ S1,1
 S0,var_int
 ```
 
-The first line has the prefix ``finals:`` and contains comma separated the list of final states of the automaton.
-The second line has the prefix ``letters:`` and contains comma separated the list of DSL primitives used, that is the alphabet of the automaton.
-The third line has the prefix ``states:`` and contains comma separated the list of states of the automaton.
-Then on each line is defined a transition of the automaton.
-First, let us look at:
+The first line starts with `finals:` and lists the comma-separated final states of the automaton.
+The second line starts with `letters:` and lists the comma-separated DSL primitives used, which constitute the alphabet of the automaton.
+The third line starts with `states:` and lists the comma-separated states of the automaton.
+Each subsequent line defines a transition of the automaton. For example:
 
 ```text
 S0,+,S1,S0
-# Which is the following transition:
+# Represents the following transition:
 S0 <- + S1 S0
 ```
 
-and for variables and constants we have:
+For variables and constants, we have:
 
 ```text
 S1,1
-# Which is the following transition:
+# Represents the following transition:
 S1 <- 1
 ```
 
-If you want to extend the automaton for more variables, it is quite straightforward, for every rule ``dst,var_X`` where ``X`` is the type of your variable add a rule ``dst,vari``.
-Note that if you have variables of different types, you should od this with the variable of the respecting type.
+To extend the automaton for more variables, for every rule `dst,var_X` where `X` is the type of your variable, add a rule `dst,var_i`. Note that if you have variables of different types, you should do this for the variable corresponding to the respective type.
