@@ -1,4 +1,3 @@
-````markdown
 # Grammar for Program Synthesis (GRAPE)
 
 This tool aims to simplify the manipulation of grammars for program synthesis.
