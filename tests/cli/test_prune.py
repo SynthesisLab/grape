@@ -1,7 +1,6 @@
 import random
 from grape.automaton.loop_manager import LoopStrategy, add_loops
 from grape.automaton.spec_manager import specialize
-from grape.automaton.tree_automaton import DFTA
 from grape.automaton_generator import grammar_by_saturation
 from grape.dsl import DSL
 from grape.enumerator import Enumerator
@@ -106,8 +105,8 @@ def test_incremental_same_size():
     incremental, tr = prune(
         dsl, evaluator, manager, max_size=max_size, rtype="int", base_grammar=out
     )
-    assert incremental.trees_until_size(50) == out.trees_until_size(50)
-    comp_by_enum([out, incremental], tr, max_size + 2)
+    assert out.rules == incremental.rules
+    assert out.finals == incremental.finals
 
 
 def test_incremental_same_size_with_loops():
@@ -128,8 +127,8 @@ def test_incremental_same_size_with_loops():
         LoopStrategy.STATE,
     )
 
-    assert incremental.trees_until_size(50) == out.trees_until_size(50)
-    comp_by_enum([out, incremental], tr, max_size + 2)
+    assert out.rules == incremental.rules
+    assert out.finals == incremental.finals
 
 
 def test_incremental_next_size():
@@ -144,5 +143,5 @@ def test_incremental_next_size():
         dsl, evaluator, manager, max_size=max_size + 1, rtype="int", base_grammar=out
     )
     direct, tr = prune(dsl, evaluator, manager, max_size=max_size + 1, rtype="int")
-    assert incremental.trees_until_size(50) == direct.trees_until_size(50)
-    comp_by_enum([direct, incremental], tr, max_size + 2)
+    assert direct.rules == incremental.rules
+    assert direct.finals == incremental.finals
