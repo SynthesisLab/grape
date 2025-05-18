@@ -79,11 +79,8 @@ def add_loops(
     if dfta.is_unbounded():
         raise ValueError("automaton is already looping: cannot add loops!")
     else:
-        type_request = spec_manager.type_request_from_specialized(dfta, dsl)
-        target_type = types.return_type(type_request)
-        whatever = target_type == "none"
         state_to_type = dsl.get_state_types(dfta)
-        state_to_size = {s: s.count(" ") for s in dfta.all_states}
+        state_to_size = {s: s.count(" ") + 1 for s in dfta.all_states}
         max_size = max(state_to_size.values())
         states_by_types = {
             t: set(s for s, st in state_to_type.items() if st == t)
@@ -130,12 +127,7 @@ def add_loops(
                             ) or str(dst)
                             new_dfta.rules[key] = new_state
                             states_by_types[rtype].add(new_state)
-                            if new_state not in state_to_size:
-                                # This is a new state to the automaton (no merge)
-                                state_to_size[new_state] = dst_size
-                                # Should it be final?
-                                if whatever or rtype == target_type:
-                                    new_dfta.finals.add(new_state)
+                            assert new_state in state_to_size
             new_dfta.refresh_reversed_rules()
 
     for no in virtual_vars:
