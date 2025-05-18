@@ -1,5 +1,5 @@
 import random
-from grape.automaton.loop_manager import LoopStrategy, add_loops
+from grape.automaton.loop_manager import add_loops
 from grape.automaton.spec_manager import specialize
 from grape.automaton_generator import grammar_by_saturation
 from grape.dsl import DSL
@@ -115,7 +115,6 @@ def test_incremental_same_size_with_loops():
     out = add_loops(
         out,
         dsl,
-        LoopStrategy.STATE,
     )
 
     incremental, tr = prune(
@@ -124,7 +123,6 @@ def test_incremental_same_size_with_loops():
     incremental = add_loops(
         incremental,
         dsl,
-        LoopStrategy.STATE,
     )
 
     assert out.rules == incremental.rules

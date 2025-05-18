@@ -6,7 +6,7 @@ from grape.automaton.automaton_manager import (
     dump_automaton_to_file,
     load_automaton_from_file,
 )
-from grape.automaton.loop_manager import LoopStrategy, add_loops
+from grape.automaton.loop_manager import add_loops
 from grape.cli import dsl_loader
 from grape.program import Primitive, Variable
 from grape.evaluator import Evaluator
@@ -117,7 +117,6 @@ def main():
     grammar = add_loops(
         reduced_grammar,
         dsl,
-        LoopStrategy.NO_LOOP if args.no_loop else LoopStrategy.STATE,
     )
 
     types.check_automaton(grammar, dsl, type_req)

@@ -1,15 +1,10 @@
-from enum import StrEnum
 import itertools
 
 from grape import types
+from grape.automaton import spec_manager
 from grape.automaton.tree_automaton import DFTA
 from grape.dsl import DSL
 from grape.program import Function, Primitive, Program, Variable
-
-
-class LoopStrategy(StrEnum):
-    NO_LOOP = "none"
-    STATE = "state"
 
 
 def __state2letter__(state: str) -> str:
@@ -77,16 +72,16 @@ def __convert_automaton__(dfta: DFTA[str, str]) -> DFTA[str, Program]:
 def add_loops(
     dfta: DFTA[str, Program | str],
     dsl: DSL,
-    strategy: LoopStrategy,
 ) -> DFTA[str, Program]:
     """
-    Assumes one state is from one letter and that variants are mapped.
+    Assumes specialized DFTA, one state = one letter and that variants are mapped.
     """
-    if strategy == LoopStrategy.NO_LOOP:
-        return __convert_automaton__(dfta)
-    elif dfta.is_unbounded():
-        raise ValueError("automaton is already looping cannot add loops!")
+    if dfta.is_unbounded():
+        raise ValueError("automaton is already looping: cannot add loops!")
     else:
+        type_request = spec_manager.type_request_from_specialized(dfta, dsl)
+        target_type = types.return_type(type_request)
+        whatever = target_type == "none"
         state_to_type = dsl.get_state_types(dfta)
         state_to_size = {s: s.count(" ") for s in dfta.all_states}
         max_size = max(state_to_size.values())
@@ -105,24 +100,15 @@ def add_loops(
             )
             + 1
         )
-        for t, states in states_by_types.items():
+        for t, states in states_by_types.copy().items():
             if all(not s.startswith("var") for s in states):
                 virtual_vars.add(max_varno)
                 dst = str(Variable(max_varno))
                 new_dfta.rules[(Variable(max_varno), tuple())] = dst
-                # Create a variant so that every
-                for (P, args), new_dst in dfta.rules.items():
-                    possibles = [
-                        [arg] + ([dst] if arg in states else []) for arg in args
-                    ]
-                    for new_args in itertools.product(*possibles):
-                        if dst in new_args and (P, new_args) not in new_dfta.rules:
-                            new_dfta.rules[(P, new_args)] = new_dst
+                states_by_types[t].add(dst)
                 max_varno += 1
         new_dfta.refresh_reversed_rules()
-        i = 0
-        while added and i < 1:
-            i += 1
+        while added:
             added = False
             for P, (Ptype, _) in dsl.primitives.items():
                 possibles = [states_by_types[arg_t] for arg_t in types.arguments(Ptype)]
@@ -144,7 +130,11 @@ def add_loops(
                             new_dfta.rules[key] = new_state
                             states_by_types[rtype].add(new_state)
                             if new_state not in state_to_size:
+                                # This is a new state to the automaton (no merge)
                                 state_to_size[new_state] = dst_size
+                                # Should it be final?
+                                if whatever or rtype == target_type:
+                                    new_dfta.finals.add(new_state)
             new_dfta.refresh_reversed_rules()
 
     for no in virtual_vars:

@@ -1,7 +1,6 @@
 import random
-from grape.automaton.loop_manager import LoopStrategy, add_loops
+from grape.automaton.loop_manager import add_loops
 from grape.automaton.spec_manager import specialize
-from grape.automaton.tree_automaton import DFTA
 from grape.automaton_generator import grammar_by_saturation
 from grape.dsl import DSL
 from grape.enumerator import Enumerator
@@ -103,13 +102,13 @@ def comp_by_enum(grammars: list, tr: str, max_size: int):
 
 
 def test_same_size():
-    out_proc = dsl.merge_type_variants(add_loops(out, dsl, LoopStrategy.STATE))
+    out_proc = dsl.merge_type_variants(add_loops(out, dsl))
     comp_by_enum([out, out_proc], tr, max_size)
     spec_out = specialize(out_proc, tr, dsl)
     comp_by_enum([saturated, spec_out], tr, max_size)
 
 
 def test_next_size():
-    out_proc = dsl.merge_type_variants(add_loops(out, dsl, LoopStrategy.STATE))
+    out_proc = dsl.merge_type_variants(add_loops(out, dsl))
     spec_out = specialize(out_proc, tr, dsl)
     comp_by_enum([saturated, spec_out], tr, max_size + 1)
