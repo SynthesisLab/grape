@@ -193,7 +193,7 @@ The tool samples input values for all the types for which samplers are provided.
 
 #### Step 3
 
-The tool checks for commutativity. This check needs to be performed explicitly because the automaton model used cannot inherently order trees, thus it cannot automatically forbid $a+b$ if $b+a$ was generated (this would require the ability to order $a$ and $b$). Therefore, a manual, approximate check for commutativity is performed. For a commutative operation like `$+$`, programs are ordered based on the last primitive used (the root of the trees). Only `$+(t_a, t_b)$` where $t\_a \\le t\_b$ is allowed, and $t\_a$, $t\_b$ are programs/trees with functions $a$ and $b$ as their respective roots.
+The tool checks for commutativity. This check needs to be performed explicitly because the automaton model used cannot inherently order trees, thus it cannot automatically forbid $a+b$ if $b+a$ was generated (this would require the ability to order $a$ and $b$). Therefore, a manual, approximate check for commutativity is performed. For a commutative operation like $+$, programs are ordered based on the last primitive used (the root of the trees). Only $t\_a + t\_b$ where $t\_a \\le t\_b$ is allowed, and $t\_a$, $t\_b$ are programs with functions $a$ and $b$ as their respective roots.
 
 #### Step 4
 
@@ -201,7 +201,7 @@ The tool generates a pruned grammar based on commutativity constraints, as these
 
 #### Step 5
 
-An automaton is built from the enumerated and retained programs. It has been observed that building the automaton from the kept programs is significantly faster than using automata product and then forbidding programs. Note that the language described by the automaton is an over-approximation. Because the automaton must be valid for any number of variables and types, all variables of the same type are merged. Consequently, some programs like `$x - x$`, which were pruned, might still be present in the automaton's language, as `$x_1 - x_0$` could represent a valid and interesting program. This automaton describes the language of programs up to a fixed size.
+An automaton is built from the enumerated and retained programs. It has been observed that building the automaton from the kept programs is significantly faster than using automata product and then forbidding programs. Note that the language described by the automaton is an over-approximation. Because the automaton must be valid for any number of variables and types, all variables of the same type are merged. Consequently, some programs like $x - x$, which were pruned, might still be present in the automaton's language, as $x_1 - x_0$ could represent a valid and interesting program. This automaton describes the language of programs up to a fixed size.
 
 #### Step 6
 
