@@ -67,7 +67,6 @@ class DSL:
         if specialized:
             guessed_tr = spec_manager.type_request_from_specialized(automaton, self)
             arg_types = types.arguments(guessed_tr)
-
         state_to_type: dict[Any, str] = {}
         elements = list(automaton.rules.items())
         while elements:
@@ -76,8 +75,6 @@ class DSL:
                 Ptype = str(P)[len("var_") :]
             elif specialized and str(P).startswith("var"):
                 Ptype = arg_types[int(str(P)[len("var") :])]
-            elif specialized:
-                Ptype = self.get_type(str(P))
             else:
                 base_Ptype = self.get_type(str(P))
                 all_possibles = types.all_variants(base_Ptype)
