@@ -72,7 +72,6 @@ def type_request_from_specialized(
 ) -> str:
     """
     Returns the type request of this specialized grammar.
-    Disclaimer: does not compute the return type only the arguments type.
     """
     # Guess variable type
     states_by_var = defaultdict(set)
@@ -101,7 +100,17 @@ def type_request_from_specialized(
         assert possibles is not None
         varno_to_type[varno] = "|".join(possibles)
     varlen = max(varno_to_type.keys())
-    return "->".join([varno_to_type[i] for i in range(varlen + 1)]) + "-> none"
+    # Guess return type
+    return_types = set()
+    for dst in grammar.finals:
+        for P, args in grammar.reversed_rules[dst]:
+            if str(P).startswith("var"):
+                rtype = varno_to_type[int(str(P)[len("var") :])]
+            else:
+                rtype = types.return_type(dsl.get_type(str(P)))
+            return_types.add(rtype)
+    dst_type = "none" if len(return_types) != 1 else list(return_types)[0]
+    return "->".join([varno_to_type[i] for i in range(varlen + 1)]) + f"-> {dst_type}"
 
 
 @overload
