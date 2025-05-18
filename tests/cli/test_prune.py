@@ -135,7 +135,6 @@ def test_incremental_next_size():
     out = add_loops(
         out,
         dsl,
-        LoopStrategy.STATE,
     )
     incremental, tr = prune(
         dsl, evaluator, manager, max_size=max_size + 1, rtype="int", base_grammar=out
