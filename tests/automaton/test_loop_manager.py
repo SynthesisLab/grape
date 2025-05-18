@@ -99,14 +99,14 @@ def comp_by_enum(grammars: list, tr: str, max_size: int):
                 p2 = []
                 for state in std.states:
                     p2 += std.memory[state][size]
-                assert set(p2) == set(programs)
+                assert set(programs) == set(p2)
 
 
 def test_same_size():
     out_proc = dsl.merge_type_variants(add_loops(out, dsl, LoopStrategy.STATE))
     comp_by_enum([out, out_proc], tr, max_size)
     spec_out = specialize(out_proc, tr, dsl)
-    comp_by_enum([spec_out, saturated], tr, max_size)
+    comp_by_enum([saturated, spec_out], tr, max_size)
 
 
 def test_next_size():

@@ -100,38 +100,49 @@ def test_prune():
     comp_by_enum([spec_out, g], tr, max_size + 1)
 
 
-def postprocess(grammar: DFTA, type_req: str, no_loop: bool = False) -> DFTA:
-    grammar = add_loops(
-        grammar,
-        dsl,
-        LoopStrategy.NO_LOOP if no_loop else LoopStrategy.STATE,
-    )
-    grammar = dsl.merge_type_variants(grammar)
-    return grammar
-
-
 def test_incremental_same_size():
     manager = EquivalenceClassManager()
     out, tr = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
-    out_looped = postprocess(out, tr)
     incremental, tr = prune(
         dsl, evaluator, manager, max_size=max_size, rtype="int", base_grammar=out
     )
-    incremental_looped = postprocess(incremental, tr)
     assert incremental.trees_until_size(50) == out.trees_until_size(50)
-    assert incremental_looped.trees_until_size(50) == out_looped.trees_until_size(50)
+    comp_by_enum([out, incremental], tr, max_size + 2)
+
+
+def test_incremental_same_size_with_loops():
+    manager = EquivalenceClassManager()
+    out, tr = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
+    out = add_loops(
+        out,
+        dsl,
+        LoopStrategy.STATE,
+    )
+
+    incremental, tr = prune(
+        dsl, evaluator, manager, max_size=max_size, rtype="int", base_grammar=out
+    )
+    incremental = add_loops(
+        incremental,
+        dsl,
+        LoopStrategy.STATE,
+    )
+
+    assert incremental.trees_until_size(50) == out.trees_until_size(50)
+    comp_by_enum([out, incremental], tr, max_size + 2)
 
 
 def test_incremental_next_size():
     manager = EquivalenceClassManager()
     out, tr = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
-    out = postprocess(out, tr)
-    print(out)
+    out = add_loops(
+        out,
+        dsl,
+        LoopStrategy.STATE,
+    )
     incremental, tr = prune(
         dsl, evaluator, manager, max_size=max_size + 1, rtype="int", base_grammar=out
     )
-    incremental = postprocess(incremental, tr)
     direct, tr = prune(dsl, evaluator, manager, max_size=max_size + 1, rtype="int")
-    direct = postprocess(direct, tr)
-
     assert incremental.trees_until_size(50) == direct.trees_until_size(50)
+    comp_by_enum([direct, incremental], tr, max_size + 2)
