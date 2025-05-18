@@ -25,14 +25,13 @@ class DSL:
                 (stype, fn) = types.annotations_to_type_str(item), item
             self.original_primitives[name] = stype
             variants = types.all_variants(stype)
+            self.eval[name] = fn
             if len(variants) == 1:
                 self.primitives[name] = (stype, fn)
-                self.eval[name] = fn
             else:
                 for sversion in variants:
                     new_name = self.__name_variant__(name, sversion)
                     self.primitives[new_name] = (sversion, fn)
-                    self.eval[new_name] = fn
                     self.to_merge[Primitive(new_name)] = Primitive(name)
 
     def __name_variant__(self, primitive: str, str_type: str) -> str:
@@ -51,16 +50,19 @@ class DSL:
     def max_arity(self) -> int:
         return max(len(types.arguments(t)) for t, _ in self.primitives.values())
 
-    def apply(self, primitive: str, *args: Any) -> Any:
-        return self.eval[primitive](*args)
-
     def semantic(self, primitive: str) -> Any:
-        return self.eval[primitive]
+        """
+        Get the semantic of the specified primitive.
+        Works both with and without variants.
+        """
+        if TYPE_SEP in primitive:
+            return self.primitives[primitive][1]
+        else:
+            return self.eval[primitive]
 
     def get_state_types(self, automaton: DFTA[T, str | Program]) -> dict[T, str]:
         """
         Get a mapping from states to types.
-        type_req is necessary if automaton is specialized.
         """
         # Assumes types variants are not present.
         specialized = spec_manager.is_specialized(automaton)
