@@ -106,6 +106,7 @@ def add_loops(
                 dst = str(Variable(max_varno))
                 new_dfta.rules[(Variable(max_varno), tuple())] = dst
                 states_by_types[t].add(dst)
+                state_to_size[dst] = 1
                 max_varno += 1
         new_dfta.refresh_reversed_rules()
         while added:
