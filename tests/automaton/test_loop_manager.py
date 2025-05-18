@@ -63,17 +63,18 @@ dsl = DSL(
         ),
     }
 )
-evaluator = Evaluator(dsl, inputs, {}, set())
 max_size = 4
 manager = EquivalenceClassManager()
+evaluator = Evaluator(dsl, inputs, {}, set())
 out, tr = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
 tr = "int->int"
 saturated = grammar_by_saturation(dsl, tr)
 
 
 def comp_by_enum(grammars: list, tr: str, max_size: int):
-    enums: list[Enumerator] = []
+    enums: list[tuple[Enumerator, Evaluator]] = []
     for g in grammars:
+        evaluator = Evaluator(dsl, inputs, {}, set())
         e = Enumerator(g)
         gen = e.enumerate_until_size(max_size + 1)
         p = next(gen)
@@ -85,9 +86,10 @@ def comp_by_enum(grammars: list, tr: str, max_size: int):
                 should_keep = evaluator.eval(p, tr) is None
         except StopIteration:
             pass
-        enums.append(e)
-    std = enums.pop()
-    for other in enums:
+        enums.append((e, evaluator))
+
+    std, evalstd = enums.pop()
+    for other, evalother in enums:
         for size in range(max_size + 1):
             a = other.count_programs_at_size(size)
             b = std.count_programs_at_size(size)
@@ -98,7 +100,15 @@ def comp_by_enum(grammars: list, tr: str, max_size: int):
                 p2 = []
                 for state in std.states:
                     p2 += std.memory[state][size]
-                assert set(programs) == set(p2)
+                diff = set(p2).symmetric_difference(programs)
+                true_diffL = set()
+                true_diffR = set()
+                for p in diff:
+                    pp = evalstd.eval(p, tr) or evalother.eval(p, tr)
+                    if pp is None or pp not in diff:
+                        true_diff = true_diffL if p in programs else true_diffR
+                        true_diff.add(p)
+                assert true_diffL == true_diffR
 
 
 def test_same_size():
