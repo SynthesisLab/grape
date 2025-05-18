@@ -53,3 +53,16 @@ def test_enumerator_quantity():
     except StopIteration:
         pass
     assert grammar.trees_until_size(max_size - 1) == count
+
+
+def test_enumerator_deterministic_order():
+    e1 = Enumerator(grammar)
+    e2 = Enumerator(grammar)
+    g1 = e1.enumerate_until_size(max_size)
+    g2 = e2.enumerate_until_size(max_size)
+    assert next(g1) == next(g2)
+    try:
+        while True:
+            assert g1.send(True) == g2.send(True)
+    except StopIteration:
+        pass
