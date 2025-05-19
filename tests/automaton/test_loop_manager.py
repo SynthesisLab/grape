@@ -63,7 +63,7 @@ dsl = DSL(
         ),
     }
 )
-max_size = 4
+max_size = 5
 manager = EquivalenceClassManager()
 evaluator = Evaluator(dsl, inputs, {}, set())
 out, tr = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
@@ -112,13 +112,13 @@ def comp_by_enum(grammars: list, tr: str, max_size: int):
 
 
 def test_same_size():
-    out_proc = dsl.merge_type_variants(add_loops(out, dsl))
+    out_proc = add_loops(out, dsl)
     comp_by_enum([out, out_proc], tr, max_size)
     spec_out = specialize(out_proc, tr, dsl)
     comp_by_enum([saturated, spec_out], tr, max_size)
 
 
 def test_next_size():
-    out_proc = dsl.merge_type_variants(add_loops(out, dsl))
-    spec_out = dsl.map_to_variants(specialize(out_proc, tr, dsl))
+    out_proc = add_loops(out, dsl)
+    spec_out = specialize(out_proc, tr, dsl)
     comp_by_enum([saturated, spec_out], tr, max_size + 1)
