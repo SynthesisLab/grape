@@ -11,15 +11,14 @@ class Program(ABC):
     def __repr__(self):
         return str(self)
 
-    def can_be_embed_into(self, other: "Program") -> bool:
-        return False
-
     @abstractmethod
     def size(self) -> int:
         pass
 
 
 class Variable(Program):
+    __match_args__ = ("no",)
+
     def __init__(self, no: int):
         self.no = no
         self._hash = no
@@ -27,14 +26,13 @@ class Variable(Program):
     def __str__(self):
         return f"var{self.no}"
 
-    def can_be_embed_into(self, other: "Program") -> bool:
-        return True
-
     def size(self) -> int:
         return 1
 
 
 class Primitive(Program):
+    __match_args__ = ("name",)
+
     def __init__(self, name: str):
         self.name: str = name
         self._hash = hash(name)
@@ -42,14 +40,13 @@ class Primitive(Program):
     def __str__(self):
         return self.name
 
-    def can_be_embed_into(self, other: "Program") -> bool:
-        return self == other
-
     def size(self) -> int:
         return 1
 
 
 class Function(Program):
+    __match_args__ = ("function", "arguments")
+
     def __init__(self, function: Program, arguments: list[Program]):
         self.function = function
         self.arguments = arguments
@@ -58,15 +55,6 @@ class Function(Program):
     def __str__(self):
         args = " ".join(map(str, self.arguments))
         return f"({self.function} {args})"
-
-    def can_be_embed_into(self, other: "Program") -> bool:
-        if isinstance(other, Function):
-            return self.function.can_be_embed_into(other.function) and all(
-                argm.can_be_embed_into(argo)
-                for argm, argo in zip(self.arguments, other.arguments)
-            )
-        else:
-            return False
 
     def size(self) -> int:
         return self.function.size() + sum(arg.size() for arg in self.arguments)
