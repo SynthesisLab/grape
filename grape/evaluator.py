@@ -1,3 +1,4 @@
+from collections import defaultdict
 import random
 from typing import Any, Callable, Generator, Optional
 from grape.dsl import DSL
@@ -22,8 +23,8 @@ class Evaluator:
         seed: int = 1,
     ):
         self.dsl = dsl
-        self.equiv_classes: dict[str, dict[Any, Program]] = {}
-        self.memoization: dict[Program, dict[Any, Any]] = {}
+        self.equiv_classes: dict[str, dict[Any, Program]] = defaultdict(dict)
+        self.memoization: dict[Program, dict[Any, Any]] = defaultdict(dict)
         self.rtypes: dict[str, str] = {
             p: types.return_type(stype) for p, (stype, _) in dsl.primitives.items()
         }
@@ -58,14 +59,15 @@ class Evaluator:
             self.full_inputs[type_req] = list(elems)
 
     def __return_type__(self, program: Program, type_req: str) -> str:
-        if isinstance(program, Variable):
-            return types.arguments(type_req)[program.no]
-        elif isinstance(program, Primitive):
-            return self.rtypes[program.name]
-        elif isinstance(program, Function):
-            return self.rtypes[program.function.name]
-        else:
-            raise ValueError
+        match program:
+            case Variable(no):
+                return types.arguments(type_req)[no]
+            case Primitive(name):
+                return self.rtypes[name]
+            case Function(func):
+                return self.rtypes[func.name]
+            case _:
+                raise ValueError
 
     def eval(self, program: Program, type_req: str) -> Optional[Program]:
         if program in self.memoization:
@@ -85,8 +87,6 @@ class Evaluator:
         # Check equivalence class
         rtype = self.__return_type__(program, type_req)
         key = tuple(outs)
-        if rtype not in self.equiv_classes:
-            self.equiv_classes[rtype] = {}
         representative = self.equiv_classes[rtype].get(key, None)
         if representative is None:
             self.equiv_classes[rtype][key] = program
@@ -95,20 +95,20 @@ class Evaluator:
         return representative
 
     def __eval__(self, program: Program, full_input: tuple[Any, ...]) -> Any:
-        if program in self.memoization:
-            if full_input in self.memoization[program]:
-                return self.memoization[program][full_input]
-        else:
-            self.memoization[program] = {}
+        mem = self.memoization[program]
+        if full_input in mem:
+            return mem[full_input]
         # Compute value
         out = None
-        if isinstance(program, Variable):
-            out = full_input[program.no]
-        elif isinstance(program, Primitive):
-            out = self.dsl.semantic(program.name)
-        elif isinstance(program, Function):
-            fun = self.__eval__(program.function, full_input)
-            arg_vals = [self.__eval__(arg, full_input) for arg in program.arguments]
-            out = fun(*arg_vals)
-        self.memoization[program][full_input] = out
+        match program:
+            case Variable(no):
+                out = full_input[no]
+            case Primitive(name):
+                out = self.dsl.semantic(name)
+            case Function(func):
+                fun = self.dsl.semantic(func.name)
+                arg_vals = [self.__eval__(arg, full_input) for arg in program.arguments]
+                out = fun(*arg_vals)
+
+        mem[full_input] = out
         return out
