@@ -119,14 +119,13 @@ def add_loops(
             )
             for t in set(state_to_type.values())
         }
-        added = True
         new_dfta = DFTA(dfta.rules.copy(), dfta.finals.copy())
         virtual_vars = set()
         max_varno = (
             max(
                 int(s[len("var") :])
                 for s in state_to_type.keys()
-                if s.startswith("var")
+                if state_to_letter[s][1]
             )
             + 1
         )
@@ -141,29 +140,26 @@ def add_loops(
                 max_varno += 1
         new_dfta.refresh_reversed_rules()
         merge_memory = {}
-        while added:
-            added = False
-            for P, (Ptype, _) in dsl.primitives.items():
-                rtype = types.return_type(dsl.get_type(P))
-                possibles = [states_by_types[arg_t] for arg_t in types.arguments(Ptype)]
-                for combi in itertools.product(*possibles):
-                    key = (P, combi)
-                    if key not in new_dfta.rules:
-                        dst_size = sum(map(lambda x: state_to_size[x], combi)) + 1
-                        if dst_size > max_size:
-                            added = True
-                            dst = Function(Primitive(P), list(map(Primitive, combi)))
-                            new_state = __find_merge__(
-                                new_dfta,
-                                P,
-                                combi,
-                                states_by_types[rtype],
-                                merge_memory,
-                                state_to_letter,
-                                state_to_size,
-                            ) or str(dst)
-                            new_dfta.rules[key] = new_state
-                            assert new_state in state_to_size
+        for P, (Ptype, _) in dsl.primitives.items():
+            rtype = types.return_type(Ptype)
+            possibles = [states_by_types[arg_t] for arg_t in types.arguments(Ptype)]
+            for combi in itertools.product(*possibles):
+                key = (P, combi)
+                if key not in new_dfta.rules:
+                    dst_size = sum(map(lambda x: state_to_size[x], combi)) + 1
+                    if dst_size > max_size:
+                        dst = Function(Primitive(P), list(map(Primitive, combi)))
+                        new_state = __find_merge__(
+                            new_dfta,
+                            P,
+                            combi,
+                            states_by_types[rtype],
+                            merge_memory,
+                            state_to_letter,
+                            state_to_size,
+                        ) or str(dst)
+                        new_dfta.rules[key] = new_state
+                        assert new_state in state_to_size
 
     for no in virtual_vars:
         dst = Variable(no)
