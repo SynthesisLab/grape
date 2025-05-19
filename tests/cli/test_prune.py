@@ -68,10 +68,15 @@ max_size = 4
 
 
 def comp_by_enum(grammars: list, tr: str, max_size: int):
-    enums: list[Enumerator] = []
+    """
+    args = [g1, g2]
+    check g1 == g2 (exactly in this order)
+    """
+    enums: list[tuple[Enumerator, Evaluator]] = []
     for g in grammars:
+        evaluator = Evaluator(dsl, inputs, {}, set())
         e = Enumerator(g)
-        gen = e.enumerate_until_size(max_size)
+        gen = e.enumerate_until_size(max_size + 1)
         p = next(gen)
         evaluator.eval(p, tr)
         should_keep = True
@@ -81,13 +86,31 @@ def comp_by_enum(grammars: list, tr: str, max_size: int):
                 should_keep = evaluator.eval(p, tr) is None
         except StopIteration:
             pass
-        enums.append(e)
-    std = enums.pop()
-    for other in enums:
-        for size in range(max_size):
-            assert other.count_programs_at_size(size) == std.count_programs_at_size(
-                size
-            )
+        enums.append((e, evaluator))
+
+    std, evalstd = enums.pop()
+    for other, evalother in enums:
+        for size in range(max_size + 1):
+            a = other.count_programs_at_size(size)
+            b = std.count_programs_at_size(size)
+            if a != b:
+                programs = []
+                for state in other.states:
+                    programs += other.memory[state][size]
+                p2 = []
+                for state in std.states:
+                    p2 += std.memory[state][size]
+                diff = set(p2).symmetric_difference(programs)
+                true_diffL = set()
+                true_diffR = set()
+                for p in diff:
+                    pp = evalstd.eval(p, tr) or evalother.eval(p, tr)
+                    if pp is None or pp not in diff:
+                        true_diff = true_diffL if p in programs else true_diffR
+                        true_diff.add(p)
+                assert true_diffL == true_diffR, (
+                    f"size={size} count(g1)-count(g2)={b - a}"
+                )
 
 
 def test_prune():
@@ -96,7 +119,7 @@ def test_prune():
     tr = "int->int"
     g = grammar_by_saturation(dsl, tr)
     spec_out = specialize(out, tr, dsl)
-    comp_by_enum([spec_out, g], tr, max_size + 1)
+    comp_by_enum([spec_out, g], tr, max_size)
 
 
 def test_incremental_same_size():
@@ -131,17 +154,19 @@ def test_incremental_same_size_with_loops():
 
 def test_incremental_next_size():
     manager = EquivalenceClassManager()
-    out, tr = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
+    evaluator = Evaluator(dsl, inputs, {}, set())
+    out, _ = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
     out = add_loops(
         out,
         dsl,
     )
-    incremental, tr = prune(
+    evaluator.free_memory()
+    incremental, _ = prune(
         dsl, evaluator, manager, max_size=max_size + 1, rtype="int", base_grammar=out
     )
-    direct, tr = prune(dsl, evaluator, manager, max_size=max_size + 1, rtype="int")
-    assert direct.rules == incremental.rules
-    assert direct.finals == incremental.finals
+    evaluator.free_memory()
+    direct, _ = prune(dsl, evaluator, manager, max_size=max_size + 1, rtype="int")
+    comp_by_enum([incremental, direct], "int->int", max_size + 1)
 
 
 def test_is_superset():
