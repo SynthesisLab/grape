@@ -1,11 +1,8 @@
 from dataclasses import dataclass
 from itertools import product
-import sys
 from typing import Any, Callable
-from tqdm import tqdm
 
 from grape.dsl import DSL
-from grape.enumerator import Enumerator
 from grape.program import Function, Primitive, Program, Variable
 from grape.automaton.tree_automaton import DFTA
 import grape.types as types
@@ -200,7 +197,7 @@ def grammar_from_memory(
     rules: dict[tuple[Program, tuple[str, ...]], str] = {}
     finals: set[str] = set()
 
-    for size in tqdm(range(1, max_size + 1), desc="building automaton"):
+    for size in range(1, max_size + 1):
         for state in sorted(memory):
             programs = memory[state][size]
             fixed = {__fix_vars__(prog, var_merge) for prog in programs}
