@@ -1,4 +1,5 @@
 import argparse
+import sys
 from typing import Callable
 from tqdm import tqdm
 from grape import types
@@ -124,9 +125,19 @@ def main():
     grammar = grammar.map_alphabet(
         lambda x: Primitive(f"var_{args_type[x.no]}") if isinstance(x, Variable) else x
     )
-    dsl.check_all_variants_present(grammar)
+    missing = dsl.find_missing_variants(grammar)
+    if missing:
+        print(
+            f"[warning] the following primitives are not present in some versions in the grammar: {', '.join(missing)}",
+            file=sys.stderr,
+        )
     grammar = dsl.merge_type_variants(grammar)
-    dsl.check_all_primitives_present(grammar)
+    missing = dsl.find_missing_primitives(grammar)
+    if missing:
+        print(
+            f"[warning] the following primitives are not present in the grammar: {', '.join(missing)}",
+            file=sys.stderr,
+        )
 
     dump_automaton_to_file(grammar, args.output)
 

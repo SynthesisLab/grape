@@ -1,5 +1,4 @@
 from typing import Any, Callable, TypeVar, overload
-import sys
 from grape import types
 from grape.automaton import spec_manager
 from grape.automaton.tree_automaton import DFTA
@@ -153,29 +152,20 @@ class DSL:
                 new_rules[(newP, args)] = dst
         return DFTA(new_rules, set(list(automaton.finals)))
 
-    def check_all_variants_present(self, grammar: DFTA[Any, Program]) -> bool:
+    def find_missing_variants(self, grammar: DFTA[Any, Program]) -> set[str]:
         missing = set(self.primitives.keys()).difference(
             set(map(str, grammar.alphabet))
         )
 
         if any(TYPE_SEP in t for t in missing):
             missing_version = {t for t in missing if TYPE_SEP in t}
-            print(
-                f"[warning] the following primitives are not present in some versions in the grammar: {', '.join(missing_version)}",
-                file=sys.stderr,
-            )
-        return not missing
+            missing = missing_version
+        return missing
 
-    def check_all_primitives_present(self, grammar: DFTA[Any, Program]) -> bool:
-        missing = set(self.original_primitives.keys()).difference(
+    def find_missing_primitives(self, grammar: DFTA[Any, Program]) -> set[str]:
+        return set(self.original_primitives.keys()).difference(
             set(map(str, grammar.alphabet))
         )
-        if missing:
-            print(
-                f"[warning] the following primitives are not present in the grammar: {', '.join(missing)}",
-                file=sys.stderr,
-            )
-        return not missing
 
     def merge_type_variants(self, grammar: DFTA[T, Program]) -> DFTA[T, Program]:
         return grammar.map_alphabet(lambda x: self.to_merge.get(x, x))
