@@ -1,7 +1,6 @@
 import itertools
 
 from grape import types
-from grape.automaton import spec_manager
 from grape.automaton.tree_automaton import DFTA
 from grape.dsl import DSL
 from grape.program import Function, Primitive, Program, Variable
@@ -18,45 +17,71 @@ def __can_states_merge(
     reversed_rules: dict[tuple[str, tuple[str, ...]], str],
     original: str,
     candidate: str,
+    merge_memory: dict[(str, str), bool],
+    state_to_letter: dict[str, tuple[str, bool]],
 ) -> bool:
-    if __state2letter__(candidate) != __state2letter__(original) and not str(
-        __state2letter__(candidate)
-    ).startswith("var"):
-        return False
-    for P1, args1 in reversed_rules[original]:
-        has_equivalent = False
-        for P2, args2 in reversed_rules[candidate]:
-            if all(
-                __can_states_merge(reversed_rules, arg1, arg2)
-                for arg1, arg2 in zip(args1, args2)
-            ):
-                has_equivalent = True
-                break
-        if not has_equivalent:
+    res = merge_memory.get((original, candidate))
+    if res is None:
+        lc = state_to_letter[candidate]
+        if lc[0] != state_to_letter[original][0] and not lc[1]:
+            merge_memory[(original, candidate)] = False
+            merge_memory[(candidate, original)] = False
             return False
-    return True
+        for P1, args1 in reversed_rules[original]:
+            has_equivalent = False
+            for P2, args2 in reversed_rules[candidate]:
+                if all(
+                    __can_states_merge(
+                        reversed_rules, arg1, arg2, merge_memory, state_to_letter
+                    )
+                    for arg1, arg2 in zip(args1, args2)
+                    if arg1 != arg2
+                ):
+                    has_equivalent = True
+                    break
+            if not has_equivalent:
+                merge_memory[(original, candidate)] = False
+                merge_memory[(candidate, original)] = False
+                return False
+        merge_memory[(original, candidate)] = True
+        merge_memory[(candidate, original)] = True
+        return True
+    else:
+        return res
 
 
 def __find_merge__(
-    dfta: DFTA[str, str], P: str, args: tuple[str, ...], candidates: set[str]
+    dfta: DFTA[str, str],
+    P: str,
+    args: tuple[str, ...],
+    candidates: set[str],
+    merge_memory: dict[(str, str), bool],
+    state_to_letter: dict[str, tuple[str, bool]],
+    state_to_size: dict[str, int],
 ) -> str | None:
     best_candidate = None
+    size_best = -1
     for candidate in candidates:
-        if __state2letter__(candidate) != P and not str(
-            __state2letter__(candidate)
-        ).startswith("var"):
+        if state_to_size[candidate] <= size_best:
+            break
+        elif state_to_letter[candidate][0] != P and not state_to_letter[candidate][1]:
             continue
         has_equivalent = False
         for P2, args2 in dfta.reversed_rules[candidate]:
             if all(
-                __can_states_merge(dfta.reversed_rules, arg1, arg2)
+                __can_states_merge(
+                    dfta.reversed_rules, arg1, arg2, merge_memory, state_to_letter
+                )
                 for arg1, arg2 in zip(args, args2)
+                if arg1 != arg2
             ):
                 has_equivalent = True
                 break
+
         if has_equivalent and (
-            best_candidate is None or best_candidate.count(" ") < candidate.count(" ")
+            best_candidate is None or size_best < state_to_size[candidate]
         ):
+            size_best = state_to_size[candidate]
             best_candidate = candidate
     return best_candidate
 
@@ -81,9 +106,17 @@ def add_loops(
     else:
         state_to_type = dsl.get_state_types(dfta)
         state_to_size = {s: s.count(" ") + 1 for s in dfta.all_states}
+        state_to_letter = {
+            s: (__state2letter__(s), __state2letter__(s).startswith("var"))
+            for s in dfta.all_states
+        }
         max_size = max(state_to_size.values())
         states_by_types = {
-            t: set(s for s, st in state_to_type.items() if st == t)
+            t: sorted(
+                [s for s, st in state_to_type.items() if st == t],
+                reverse=True,
+                key=lambda s: state_to_size[s],
+            )
             for t in set(state_to_type.values())
         }
         added = True
@@ -102,13 +135,16 @@ def add_loops(
                 virtual_vars.add(max_varno)
                 dst = str(Variable(max_varno))
                 new_dfta.rules[(Variable(max_varno), tuple())] = dst
-                states_by_types[t].add(dst)
+                states_by_types[t].append(dst)
                 state_to_size[dst] = 1
+                state_to_letter[dst] = (dst, True)
                 max_varno += 1
         new_dfta.refresh_reversed_rules()
+        merge_memory = {}
         while added:
             added = False
             for P, (Ptype, _) in dsl.primitives.items():
+                rtype = types.return_type(dsl.get_type(P))
                 possibles = [states_by_types[arg_t] for arg_t in types.arguments(Ptype)]
                 for combi in itertools.product(*possibles):
                     key = (P, combi)
@@ -120,13 +156,18 @@ def add_loops(
                             and max(args_size) >= max_size - len(args_size) + 1
                         ):
                             added = True
-                            rtype = types.return_type(dsl.get_type(P))
+
                             dst = Function(Primitive(P), list(map(Primitive, combi)))
                             new_state = __find_merge__(
-                                new_dfta, P, combi, states_by_types[rtype]
+                                new_dfta,
+                                P,
+                                combi,
+                                states_by_types[rtype],
+                                merge_memory,
+                                state_to_letter,
+                                state_to_size,
                             ) or str(dst)
                             new_dfta.rules[key] = new_state
-                            states_by_types[rtype].add(new_state)
                             assert new_state in state_to_size
             new_dfta.refresh_reversed_rules()
 
