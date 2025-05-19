@@ -170,14 +170,14 @@ def prune(
     reduced_grammar, t = grammar_from_memory(
         enumerator.memory, type_req, grammar.finals
     )
-    print("at size:", max_size)
+    print(f"at size {max_size} programs (after graping): {t:.2e}")
     print(
-        "\tmethod: ratio no pruning | ratio enum. | ratio pruned",
+        "\tmethod: ratio no graping | ratio base | ratio graped",
     )
     for s, v in [
-        ("no pruning", base_ntrees),
-        ("commutativity pruned", enum_ntrees),
-        ("pruned", t),
+        ("no graping", base_ntrees),
+        ("base      ", enum_ntrees),
+        ("graped    ", t),
     ]:
         print(
             f"\t{s}: {v / base_ntrees:.2%} | {v / enum_ntrees:.2%} | {v / t:.2%}",
