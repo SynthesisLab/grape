@@ -131,7 +131,7 @@ def add_loops(
             + 1
         )
         for t, states in states_by_types.copy().items():
-            if all(not s.startswith("var") for s in states):
+            if all(not state_to_letter[s][1] for s in states):
                 virtual_vars.add(max_varno)
                 dst = str(Variable(max_varno))
                 new_dfta.rules[(Variable(max_varno), tuple())] = dst
@@ -149,14 +149,9 @@ def add_loops(
                 for combi in itertools.product(*possibles):
                     key = (P, combi)
                     if key not in new_dfta.rules:
-                        args_size = list(map(lambda x: state_to_size[x], combi))
-                        dst_size = sum(args_size) + 1
-                        if (
-                            dst_size >= max_size
-                            and max(args_size) >= max_size - len(args_size) + 1
-                        ):
+                        dst_size = sum(map(lambda x: state_to_size[x], combi)) + 1
+                        if dst_size > max_size:
                             added = True
-
                             dst = Function(Primitive(P), list(map(Primitive, combi)))
                             new_state = __find_merge__(
                                 new_dfta,
@@ -169,11 +164,9 @@ def add_loops(
                             ) or str(dst)
                             new_dfta.rules[key] = new_state
                             assert new_state in state_to_size
-            new_dfta.refresh_reversed_rules()
 
     for no in virtual_vars:
         dst = Variable(no)
         del new_dfta.rules[(dst, tuple())]
     new_dfta.reduce()
-    new_dfta.refresh_reversed_rules()
     return __convert_automaton__(new_dfta).minimise().classic_state_renaming()
