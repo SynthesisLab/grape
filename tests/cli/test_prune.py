@@ -142,3 +142,51 @@ def test_incremental_next_size():
     direct, tr = prune(dsl, evaluator, manager, max_size=max_size + 1, rtype="int")
     assert direct.rules == incremental.rules
     assert direct.finals == incremental.finals
+
+
+def test_is_superset():
+    evaluator = Evaluator(dsl, inputs, {}, set())
+
+    manager = EquivalenceClassManager()
+    out, tr = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
+    tr = "int->int"
+    base = grammar_by_saturation(dsl, tr)
+    evaluator = Evaluator(dsl, inputs, {}, set())
+    ebase = Enumerator(base)
+    gen = ebase.enumerate_until_size(max_size)
+    p = next(gen)
+    should_keep = evaluator.eval(p, tr) is None
+    try:
+        while True:
+            p = gen.send(should_keep)
+            should_keep = evaluator.eval(p, tr) is None
+    except StopIteration:
+        pass
+    e = Enumerator(specialize(out, tr, dsl))
+    gen = e.enumerate_until_size(max_size)
+    p = next(gen)
+    try:
+        while True:
+            gen.send(True)
+    except StopIteration:
+        pass
+
+    new_memory_to_size = {}
+    old_memory_to_size = {}
+    for value in e.memory.values():
+        for size, programs in value.items():
+            if size not in new_memory_to_size:
+                new_memory_to_size[size] = []
+            new_memory_to_size[size] += programs
+    for value in ebase.memory.values():
+        for size, programs in value.items():
+            if size not in old_memory_to_size:
+                old_memory_to_size[size] = []
+            old_memory_to_size[size] += programs
+
+    sizes = set(new_memory_to_size.keys()) | set(old_memory_to_size.keys())
+    for size in sizes:
+        assert size in new_memory_to_size
+        assert set(old_memory_to_size.get(size, [])).issubset(
+            set(new_memory_to_size[size])
+        )

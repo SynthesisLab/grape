@@ -233,13 +233,6 @@ def grammar_from_memory(
                 added.add((old, ()))
     relevant_dfta.refresh_reversed_rules()
     n = relevant_dfta.trees_until_size(max_size)
-    from_enum = __check_is_superset__(memory, relevant_dfta, max_size)
-    total_programs = sum(
-        sum(len(memory[state][s]) for state in memory) for s in range(1, max_size + 1)
-    )
-    print(
-        f"obs. equivalence: {total_programs:.3e} pruned: {from_enum:.3e} ({from_enum / total_programs:.2%})"
-    )
     # Delete them now that they have been used
     for x in added:
         del relevant_dfta.rules[x]
@@ -247,62 +240,3 @@ def grammar_from_memory(
     # ==================================
 
     return relevant_dfta, n
-
-
-def __check_is_superset__(
-    memory: dict[Any, dict[int, list[Program]]], dfta: DFTA[Any, Program], max_size: int
-) -> int:
-    enum = Enumerator(dfta)
-    gen = enum.enumerate_until_size(max_size + 1)
-    pbar = tqdm(total=dfta.trees_until_size(max_size), desc="checking")
-    next(gen)
-    size = 0
-    count = 0
-    while True:
-        try:
-            gen.send(True)
-            count += 1
-            if count & 15 == 0:
-                pbar.update(16)
-                count = 0
-        except StopIteration:
-            break
-    pbar.update(count)
-    pbar.close()
-    new_memory_to_size = {}
-    old_memory_to_size = {}
-    total = 0
-    for value in enum.memory.values():
-        for size, programs in value.items():
-            if size not in new_memory_to_size:
-                new_memory_to_size[size] = []
-            new_memory_to_size[size] += programs
-            total += len(programs)
-    for value in memory.values():
-        for size, programs in value.items():
-            if size not in old_memory_to_size:
-                old_memory_to_size[size] = []
-            old_memory_to_size[size] += programs
-
-    sizes = set(new_memory_to_size.keys()) | set(old_memory_to_size.keys())
-    for size in sizes:
-        if size not in new_memory_to_size:
-            print(f"[warning] missing expressions of size: {size}", file=sys.stderr)
-            print("[warning] stopped check here to avoid blow up", file=sys.stderr)
-            break
-        elif size not in old_memory_to_size:
-            pass
-            # print("+", new_memory_to_size[size])
-        else:
-            # more = set(new_memory_to_size[size]) - set(old_memory_to_size[size])
-            less = set(old_memory_to_size[size]) - set(new_memory_to_size[size])
-            # if more:
-            #     print("+", more)
-            if less:
-                print(
-                    f"[warning] missing the following of size {size}: {less}",
-                    file=sys.stderr,
-                )
-                print("[warning] stopped check here to avoid blow up", file=sys.stderr)
-                break
-    return total
