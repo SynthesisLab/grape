@@ -176,4 +176,4 @@ def add_loops(
         del new_dfta.rules[(dst, tuple())]
     new_dfta.reduce()
     new_dfta.refresh_reversed_rules()
-    return __convert_automaton__(new_dfta)  # .minimise())#.classic_state_renaming())
+    return __convert_automaton__(new_dfta).minimise().classic_state_renaming()
