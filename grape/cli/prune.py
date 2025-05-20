@@ -8,9 +8,8 @@ from grape.automaton.automaton_manager import (
     load_automaton_from_file,
 )
 from grape.automaton.loop_manager import LoopingAlgorithm, add_loops
-from grape.automaton.spec_manager import despecialize
+from grape.automaton.spec_manager import despecialize, type_request_from_specialized
 from grape.cli import dsl_loader
-from grape.program import Primitive, Variable
 from grape.evaluator import Evaluator
 from grape.pruning.equivalence_class_manager import EquivalenceClassManager
 from grape.pruning.obs_equiv_pruner import prune
@@ -114,7 +113,7 @@ def main():
     base_aut_file: str = args.automaton or ""
     if len(base_aut_file) > 0:
         base_grammar = load_automaton_from_file(base_aut_file)
-    reduced_grammar, type_req = prune(
+    reduced_grammar = prune(
         dsl,
         evaluator,
         manager,
@@ -122,6 +121,7 @@ def main():
         target_type,
         base_grammar,
     )
+    type_req = type_request_from_specialized(reduced_grammar, dsl)
     loop_algorithm = args.strategy
     if loop_algorithm != "none":
         grammar = add_loops(reduced_grammar, dsl, loop_algorithm)

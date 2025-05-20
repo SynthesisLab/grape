@@ -71,7 +71,7 @@ algorithms = [LoopingAlgorithm.OBSERVATIONAL_EQUIVALENCE, LoopingAlgorithm.GRAPE
 max_size = 5
 manager = EquivalenceClassManager()
 evaluator = Evaluator(dsl, inputs, {}, set())
-out, tr = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
+out = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
 tr = "int->int"
 saturated = grammar_by_saturation(dsl, tr)
 

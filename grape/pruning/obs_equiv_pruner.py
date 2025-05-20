@@ -100,7 +100,10 @@ def prune(
     max_size: int,
     rtype: str | None = None,
     base_grammar: DFTA | None = None,
-) -> tuple[DFTA[str, Program], str]:
+) -> DFTA[str, Program]:
+    """
+    Returns specialized grammar
+    """
     # Find all type requests
     type_req = __infer_mega_type_req__(
         dsl.primitives, rtype, max_size, set(evaluator.base_inputs.keys())
@@ -182,4 +185,4 @@ def prune(
         print(
             f"\t{s}: {v / base_ntrees:.2%} | {v / enum_ntrees:.2%} | {v / t:.2%}",
         )
-    return reduced_grammar, type_req
+    return reduced_grammar
