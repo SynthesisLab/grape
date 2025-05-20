@@ -3,6 +3,7 @@ import itertools
 from typing import Generator
 
 from grape import types
+from grape.automaton.spec_manager import is_specialized
 from grape.automaton.tree_automaton import DFTA
 from grape.dsl import DSL
 from grape.program import Function, Primitive, Program, Variable
@@ -103,7 +104,7 @@ def __convert_automaton__(dfta: DFTA[str, str]) -> DFTA[str, Program]:
 
 def __get_largest_merges__(
     state: str,
-    dfta: DFTA[str, str | Program],
+    dfta: DFTA[str, str],
     state_to_letter: dict[str, tuple[str, bool]],
     state_to_size: dict[str, int],
     merge_memory: dict[(str, str), bool],
@@ -131,7 +132,7 @@ def __get_largest_merges__(
 
 def __all_sub_args__(
     combi: tuple[str, ...],
-    dfta: DFTA[str, str | Program],
+    dfta: DFTA[str, str],
     state_to_letter: dict[str, tuple[str, bool]],
     state_to_size: dict[str, int],
     merge_memory: dict[(str, str), bool],
@@ -157,7 +158,7 @@ def __all_sub_args__(
 
 
 def add_loops(
-    dfta: DFTA[str, Program | str],
+    dfta: DFTA[str, str],
     dsl: DSL,
     algorithm: LoopingAlgorithm = LoopingAlgorithm.OBSERVATIONAL_EQUIVALENCE,
 ) -> DFTA[str, Program]:
@@ -166,6 +167,8 @@ def add_loops(
     """
     if dfta.is_unbounded():
         raise ValueError("automaton is already looping: cannot add loops!")
+    elif not is_specialized(dfta):
+        raise ValueError("automaton is not specialized: cannot add loops!")
     else:
         match algorithm:
             case LoopingAlgorithm.OBSERVATIONAL_EQUIVALENCE:
@@ -183,7 +186,7 @@ def add_loops(
                     states_by_types: dict[str, list[str]],
                 ) -> bool:
                     return all(
-                        (P, sub_args) not in new_dfta
+                        (P, sub_args) in new_dfta
                         for sub_args in __all_sub_args__(
                             combi,
                             dfta,
