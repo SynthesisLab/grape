@@ -83,10 +83,12 @@ def commutativity_constraint(
         else:
             return str(p)
 
+    whatever = target_type.lower() == "none"
+
     return Constraint(
         str,
         transition,
-        lambda s: target_type == "none"
+        lambda s: whatever
         or (
             types.return_type(dsl.primitives[s][0]) == target_type
             if s in dsl.primitives
@@ -98,8 +100,11 @@ def commutativity_constraint(
 def grammar_by_saturation(
     dsl: DSL, requested_type: str, constraints: list[Constraint] = []
 ) -> DFTA[Any, Program]:
+    """
+    Returns a specialized grammar with the given constraints.
+    """
     args, rtype = types.parse(requested_type)
-    whatever = rtype == "None"
+    whatever = rtype.lower() == "none"
     rules: dict[tuple[Program, tuple[str, ...]], str] = {}
 
     added = True
