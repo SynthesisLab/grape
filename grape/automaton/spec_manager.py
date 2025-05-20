@@ -60,12 +60,14 @@ def specialize(
             new_rules[(P, args)] = dst
 
     if whatever or syntax is None:
-        return DFTA(new_rules, set(list(grammar.finals)))
+        dfta = DFTA(new_rules, set(list(grammar.finals)))
     else:
         state_to_type = syntax.get_state_types(grammar)
-        return DFTA(
+        dfta = DFTA(
             new_rules, set(s for s in grammar.finals if state_to_type[s] == rtype)
         )
+    dfta.reduce()
+    return dfta
 
 
 def is_specialized(grammar: DFTA[T, str] | DFTA[T, Program]) -> bool:
