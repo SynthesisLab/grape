@@ -8,6 +8,7 @@ from grape.automaton.automaton_manager import (
     load_automaton_from_file,
 )
 from grape.automaton.loop_manager import LoopingAlgorithm, add_loops
+from grape.automaton.spec_manager import despecialize
 from grape.cli import dsl_loader
 from grape.program import Primitive, Variable
 from grape.evaluator import Evaluator
@@ -128,10 +129,7 @@ def main():
         grammar = reduced_grammar
 
     types.check_automaton(grammar, dsl, type_req)
-    args_type = types.arguments(type_req)
-    grammar = grammar.map_alphabet(
-        lambda x: Primitive(f"var_{args_type[x.no]}") if isinstance(x, Variable) else x
-    )
+    grammar = despecialize(grammar, type_req)
     missing = dsl.find_missing_variants(grammar)
     if missing:
         print(
