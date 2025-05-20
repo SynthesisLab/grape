@@ -29,6 +29,14 @@ def specialize(
 def specialize(
     grammar: DFTA[T, str] | DFTA[T, Program], type_req: str, syntax: "DSL | None"
 ) -> DFTA[T, str] | DFTA[T, Program]:
+    """
+    Specialize a despecialized grammar to the specified type request.
+
+    If syntax is given then exact finals states can be computed.
+
+    Note that information can be lost if this specialized grammar were then to be despecialized.
+    Example: despecialized supports int and bool, specialize to int->int, the next despecialize will support only int.
+    """
     if isinstance(list(grammar.alphabet)[0], str):
 
         def make_var(i: int):
@@ -126,6 +134,9 @@ def despecialize(grammar: DFTA[T, Program], type_req: str) -> DFTA[T, Program]:
 def despecialize(
     grammar: DFTA[T, str] | DFTA[T, Program], type_req: str
 ) -> DFTA[T, str] | DFTA[T, Program]:
+    """
+    Despecialize a grammar.
+    """
     arg_types = types.arguments(type_req)
     vars2types = {i: arg_type for i, arg_type in enumerate(arg_types)}
     if isinstance(list(grammar.alphabet)[0], str):
@@ -147,3 +158,38 @@ def despecialize(
     out.finals = out.all_states
     out.reduce()
     return out
+
+
+@overload
+def respecialize(
+    grammar: DFTA[T, str],
+    type_req: str,
+    old_type_request: str,
+    dsl: "DSL | None",
+) -> DFTA[T, str]:
+    pass
+
+
+@overload
+def respecialize(
+    grammar: DFTA[T, Program],
+    type_req: str,
+    old_type_request: str,
+    dsl: "DSL | None",
+) -> DFTA[T, Program]:
+    pass
+
+
+def respecialize(
+    grammar: DFTA[T, str] | DFTA[T, Program],
+    type_req: str,
+    old_type_request: str,
+    dsl: "DSL | None",
+) -> DFTA[T, str] | DFTA[T, Program]:
+    """
+    Take a specialized grammar, unspecialize it and then respecialize it for the specified grammar.
+
+    Note that information can be lost if this specialized grammar were then to be despecialized.
+    Example: despecialized supports int and bool, specialize to int->int, the next despecialize will support only int.
+    """
+    return specialize(despecialize(grammar, old_type_request), type_req, dsl)
