@@ -1,5 +1,6 @@
+import pytest
 import random
-from grape.automaton.loop_manager import add_loops
+from grape.automaton.loop_manager import LoopingAlgorithm, add_loops
 from grape.automaton.spec_manager import specialize
 from grape.automaton_generator import grammar_by_saturation
 from grape.dsl import DSL
@@ -63,6 +64,7 @@ dsl = DSL(
         ),
     }
 )
+algorithms = [LoopingAlgorithm.OBSERVATIONAL_EQUIVALENCE, LoopingAlgorithm.GRAPE]
 max_size = 5
 manager = EquivalenceClassManager()
 evaluator = Evaluator(dsl, inputs, {}, set())
@@ -111,14 +113,16 @@ def comp_by_enum(grammars: list, tr: str, max_size: int):
                 assert true_diffL == true_diffR
 
 
-def test_same_size():
-    out_proc = add_loops(out, dsl)
+@pytest.mark.parametrize("algo", algorithms)
+def test_same_size(algo: LoopingAlgorithm):
+    out_proc = add_loops(out, dsl, algo)
     comp_by_enum([out, out_proc], tr, max_size)
     spec_out = specialize(out_proc, tr, dsl)
     comp_by_enum([saturated, spec_out], tr, max_size)
 
 
-def test_next_size():
-    out_proc = add_loops(out, dsl)
+@pytest.mark.parametrize("algo", algorithms)
+def test_next_size(algo: LoopingAlgorithm):
+    out_proc = add_loops(out, dsl, algo)
     spec_out = specialize(out_proc, tr, dsl)
     comp_by_enum([saturated, spec_out], tr, max_size + 1)

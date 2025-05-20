@@ -7,7 +7,7 @@ from grape.automaton.automaton_manager import (
     dump_automaton_to_file,
     load_automaton_from_file,
 )
-from grape.automaton.loop_manager import add_loops
+from grape.automaton.loop_manager import LoopingAlgorithm, add_loops
 from grape.cli import dsl_loader
 from grape.program import Primitive, Variable
 from grape.evaluator import Evaluator
@@ -73,10 +73,16 @@ def parse_args():
         default="./grammar.grape",
         help="output file containing the pruned grammar",
     )
+    loop_strategies = [
+        LoopingAlgorithm.GRAPE,
+        LoopingAlgorithm.OBSERVATIONAL_EQUIVALENCE,
+        "none",
+    ]
     parser.add_argument(
-        "--no-loop",
-        action="store_true",
-        help="the grammar will produce programs only up to the size specified",
+        "--strategy",
+        choices=loop_strategies,
+        default=loop_strategies[0],
+        help="looping algorithm to use",
     )
     parser.add_argument(
         "--from",
@@ -115,10 +121,9 @@ def main():
         target_type,
         base_grammar,
     )
-    grammar = add_loops(
-        reduced_grammar,
-        dsl,
-    )
+    loop_algorithm = args.strategy
+    if loop_algorithm != "none":
+        grammar = add_loops(reduced_grammar, dsl, loop_algorithm)
 
     types.check_automaton(grammar, dsl, type_req)
     args_type = types.arguments(type_req)

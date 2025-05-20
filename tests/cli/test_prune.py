@@ -1,5 +1,7 @@
 import random
-from grape.automaton.loop_manager import add_loops
+
+import pytest
+from grape.automaton.loop_manager import LoopingAlgorithm, add_loops
 from grape.automaton.spec_manager import specialize
 from grape.automaton_generator import grammar_by_saturation
 from grape.dsl import DSL
@@ -64,7 +66,8 @@ dsl = DSL(
     }
 )
 evaluator = Evaluator(dsl, inputs, {}, set())
-max_size = 4
+max_size = 5
+algorithms = [LoopingAlgorithm.OBSERVATIONAL_EQUIVALENCE, LoopingAlgorithm.GRAPE]
 
 
 def comp_by_enum(grammars: list, tr: str, max_size: int):
@@ -132,34 +135,27 @@ def test_incremental_same_size():
     assert out.finals == incremental.finals
 
 
-def test_incremental_same_size_with_loops():
+@pytest.mark.parametrize("algo", algorithms)
+def test_incremental_same_size_with_loops(algo: LoopingAlgorithm):
     manager = EquivalenceClassManager()
     out, tr = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
-    out = add_loops(
-        out,
-        dsl,
-    )
+    out = add_loops(out, dsl, algo)
 
     incremental, tr = prune(
         dsl, evaluator, manager, max_size=max_size, rtype="int", base_grammar=out
     )
-    incremental = add_loops(
-        incremental,
-        dsl,
-    )
+    incremental = add_loops(incremental, dsl, algo)
 
     assert out.rules == incremental.rules
     assert out.finals == incremental.finals
 
 
-def test_incremental_next_size():
+@pytest.mark.parametrize("algo", algorithms)
+def test_incremental_next_size(algo: LoopingAlgorithm):
     manager = EquivalenceClassManager()
     evaluator = Evaluator(dsl, inputs, {}, set())
     out, _ = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
-    out = add_loops(
-        out,
-        dsl,
-    )
+    out = add_loops(out, dsl, algo)
     evaluator.free_memory()
     incremental, _ = prune(
         dsl, evaluator, manager, max_size=max_size + 1, rtype="int", base_grammar=out

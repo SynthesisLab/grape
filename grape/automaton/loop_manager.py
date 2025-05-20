@@ -1,9 +1,16 @@
+from enum import StrEnum
 import itertools
+from typing import Generator
 
 from grape import types
 from grape.automaton.tree_automaton import DFTA
 from grape.dsl import DSL
 from grape.program import Function, Primitive, Program, Variable
+
+
+class LoopingAlgorithm(StrEnum):
+    OBSERVATIONAL_EQUIVALENCE = "observational_equivalence"
+    GRAPE = "grape"
 
 
 def __state2letter__(state: str) -> str:
@@ -94,9 +101,65 @@ def __convert_automaton__(dfta: DFTA[str, str]) -> DFTA[str, Program]:
     )
 
 
+def __get_largest_merges__(
+    state: str,
+    dfta: DFTA[str, str | Program],
+    state_to_letter: dict[str, tuple[str, bool]],
+    state_to_size: dict[str, int],
+    merge_memory: dict[(str, str), bool],
+    largest_merge: dict[str, str],
+    states_by_types: dict[str, list[str]],
+) -> list[str]:
+    res = largest_merge.get(state, None)
+    if res is None:
+        candidates = [S for S in states_by_types.values() if state in S].pop(0)
+        out = []
+        size = -1
+        for candidate in candidates:
+            if state_to_size[candidate] < size:
+                break
+            if __can_states_merge(
+                dfta.reversed_rules, state, candidate, merge_memory, state_to_letter
+            ):
+                out.append(state)
+                size = state_to_size[candidate]
+        largest_merge[state] = out
+        return out
+    else:
+        return res
+
+
+def __all_sub_args__(
+    combi: tuple[str, ...],
+    dfta: DFTA[str, str | Program],
+    state_to_letter: dict[str, tuple[str, bool]],
+    state_to_size: dict[str, int],
+    merge_memory: dict[(str, str), bool],
+    largest_merge: dict[str, str],
+    states_by_types: dict[str, list[str]],
+) -> Generator[str, None, None]:
+    possibles = list(
+        map(
+            lambda s: __get_largest_merges__(
+                s,
+                dfta,
+                state_to_letter,
+                state_to_size,
+                merge_memory,
+                largest_merge,
+                states_by_types,
+            ),
+            combi,
+        )
+    )
+    for new_args in itertools.product(*possibles):
+        yield new_args
+
+
 def add_loops(
     dfta: DFTA[str, Program | str],
     dsl: DSL,
+    algorithm: LoopingAlgorithm = LoopingAlgorithm.OBSERVATIONAL_EQUIVALENCE,
 ) -> DFTA[str, Program]:
     """
     Assumes specialized DFTA, one state = one letter and that variants are mapped.
@@ -104,6 +167,36 @@ def add_loops(
     if dfta.is_unbounded():
         raise ValueError("automaton is already looping: cannot add loops!")
     else:
+        match algorithm:
+            case LoopingAlgorithm.OBSERVATIONAL_EQUIVALENCE:
+                is_allowed = lambda *args, **kwargs: True
+            case LoopingAlgorithm.GRAPE:
+
+                def is_allowed(
+                    P: str,
+                    combi: tuple[str, ...],
+                    dfta: DFTA[str, str | Program],
+                    state_to_letter: dict[str, tuple[str, bool]],
+                    state_to_size: dict[str, int],
+                    merge_memory: dict[(str, str), bool],
+                    largest_merge: dict[str, str],
+                    states_by_types: dict[str, list[str]],
+                ) -> bool:
+                    return all(
+                        (P, sub_args) not in new_dfta
+                        for sub_args in __all_sub_args__(
+                            combi,
+                            dfta,
+                            state_to_letter,
+                            state_to_size,
+                            merge_memory,
+                            largest_merge,
+                            states_by_types,
+                        )
+                        if sum(map(lambda x: state_to_size[x], sub_args)) + 1
+                        <= max_size
+                    )
+
         state_to_type = dsl.get_state_types(dfta)
         state_to_size = {s: s.count(" ") + 1 for s in dfta.all_states}
         state_to_letter = {
@@ -140,29 +233,42 @@ def add_loops(
                 max_varno += 1
         new_dfta.refresh_reversed_rules()
         merge_memory = {}
+        largest_merge = {}
         for P, (Ptype, _) in dsl.primitives.items():
-            rtype = types.return_type(Ptype)
-            possibles = [states_by_types[arg_t] for arg_t in types.arguments(Ptype)]
+            args_types, rtype = types.parse(Ptype)
+            possibles = [states_by_types[arg_t] for arg_t in args_types]
             for combi in itertools.product(*possibles):
                 key = (P, combi)
-                if key not in new_dfta.rules:
-                    dst_size = sum(map(lambda x: state_to_size[x], combi)) + 1
-                    if dst_size > max_size:
-                        dst = Function(Primitive(P), list(map(Primitive, combi)))
-                        new_state = __find_merge__(
-                            new_dfta,
-                            P,
-                            combi,
-                            states_by_types[rtype],
-                            merge_memory,
-                            state_to_letter,
-                            state_to_size,
-                        ) or str(dst)
-                        new_dfta.rules[key] = new_state
-                        assert new_state in state_to_size
+                dst_size = sum(map(lambda x: state_to_size[x], combi)) + 1
+                if dst_size > max_size:
+                    assert key not in new_dfta.rules
+                    dst = Function(Primitive(P), list(map(Primitive, combi)))
+                    if not is_allowed(
+                        P,
+                        combi,
+                        dfta,
+                        state_to_letter,
+                        state_to_size,
+                        merge_memory,
+                        largest_merge,
+                        states_by_types,
+                    ):
+                        continue
+                    new_state = __find_merge__(
+                        new_dfta,
+                        P,
+                        combi,
+                        states_by_types[rtype],
+                        merge_memory,
+                        state_to_letter,
+                        state_to_size,
+                    )
+                    assert new_state in state_to_size
+                    new_dfta.rules[key] = new_state
 
-    for no in virtual_vars:
-        dst = Variable(no)
-        del new_dfta.rules[(dst, tuple())]
-    new_dfta.reduce()
-    return __convert_automaton__(new_dfta).minimise().classic_state_renaming()
+        for no in virtual_vars:
+            dst = Variable(no)
+            del new_dfta.rules[(dst, tuple())]
+
+        new_dfta.reduce()
+        return __convert_automaton__(new_dfta).minimise().classic_state_renaming()
