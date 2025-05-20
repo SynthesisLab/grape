@@ -24,6 +24,7 @@ It offers the following features:
 We strongly recommend using the `.grape` format whenever possible, as it offers seamless functionality. The other formats are partially supported primarily for export purposes, reflecting the project's focus.
 
 **Table of Contents:**
+
 - [Installation](#installation)
 - [Example](#example)
 - [Pruning](#pruning)
@@ -35,7 +36,7 @@ We strongly recommend using the `.grape` format whenever possible, as it offers 
 ## Installation
 
 ```sh
-pip install git+[https://github.com/SynthesisLab/grape.git](https://github.com/SynthesisLab/grape.git)
+pip install git+https://github.com/SynthesisLab/grape.git
 ````
 
 ## Example
