@@ -158,7 +158,7 @@ def __all_sub_args__(
 
 
 def add_loops(
-    dfta: DFTA[str, str],
+    dfta: DFTA[str, Program | str],
     dsl: DSL,
     algorithm: LoopingAlgorithm = LoopingAlgorithm.OBSERVATIONAL_EQUIVALENCE,
 ) -> DFTA[str, Program]:
@@ -200,6 +200,7 @@ def add_loops(
                         <= max_size
                     )
 
+        dfta = dfta.map_alphabet(str)
         state_to_type = dsl.get_state_types(dfta)
         state_to_size = {s: s.count(" ") + 1 for s in dfta.all_states}
         state_to_letter = {
@@ -229,7 +230,7 @@ def add_loops(
             if all(not state_to_letter[s][1] for s in states):
                 virtual_vars.add(max_varno)
                 dst = str(Variable(max_varno))
-                new_dfta.rules[(Variable(max_varno), tuple())] = dst
+                new_dfta.rules[(dst, tuple())] = dst
                 states_by_types[t].append(dst)
                 state_to_size[dst] = 1
                 state_to_letter[dst] = (dst, True)
@@ -243,20 +244,17 @@ def add_loops(
             for combi in itertools.product(*possibles):
                 key = (P, combi)
                 dst_size = sum(map(lambda x: state_to_size[x], combi)) + 1
-                if dst_size > max_size:
+                if dst_size > max_size and is_allowed(
+                    P,
+                    combi,
+                    dfta,
+                    state_to_letter,
+                    state_to_size,
+                    merge_memory,
+                    largest_merge,
+                    states_by_types,
+                ):
                     assert key not in new_dfta.rules
-                    dst = Function(Primitive(P), list(map(Primitive, combi)))
-                    if not is_allowed(
-                        P,
-                        combi,
-                        dfta,
-                        state_to_letter,
-                        state_to_size,
-                        merge_memory,
-                        largest_merge,
-                        states_by_types,
-                    ):
-                        continue
                     new_state = __find_merge__(
                         new_dfta,
                         P,
@@ -270,7 +268,7 @@ def add_loops(
                     new_dfta.rules[key] = new_state
 
         for no in virtual_vars:
-            dst = Variable(no)
+            dst = str(Variable(no))
             del new_dfta.rules[(dst, tuple())]
 
         new_dfta.reduce()
