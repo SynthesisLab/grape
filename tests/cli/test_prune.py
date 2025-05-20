@@ -2,7 +2,7 @@ import random
 
 import pytest
 from grape.automaton.loop_manager import LoopingAlgorithm, add_loops
-from grape.automaton.spec_manager import specialize
+from grape.automaton.spec_manager import respecialize, type_request_from_specialized
 from grape.automaton_generator import grammar_by_saturation
 from grape.dsl import DSL
 from grape.enumerator import Enumerator
@@ -45,7 +45,10 @@ def signed_masking(n: int, mask: int = MAXI) -> int:
     return n & mask if n > 0 else -(-n & mask)
 
 
-sample_dict = {"int": lambda: signed_masking(random.randint(-MAXI, MAXI), MAXI)}
+sample_dict = {
+    "int": lambda: signed_masking(random.randint(-MAXI, MAXI), MAXI),
+    "bool": lambda: random.uniform(0, 1) > 0.5,
+}
 
 inputs = sample_inputs(50, sample_dict)
 
@@ -121,7 +124,7 @@ def test_prune():
     out, tr = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
     tr = "int->int"
     g = grammar_by_saturation(dsl, tr)
-    spec_out = specialize(out, tr, dsl)
+    spec_out = respecialize(out, tr, type_request_from_specialized(out, dsl), dsl)
     comp_by_enum([spec_out, g], tr, max_size)
 
 
@@ -161,15 +164,15 @@ def test_incremental_next_size(algo: LoopingAlgorithm):
         dsl, evaluator, manager, max_size=max_size + 1, rtype="int", base_grammar=out
     )
     evaluator.free_memory()
-    direct, _ = prune(dsl, evaluator, manager, max_size=max_size + 1, rtype="int")
-    comp_by_enum([incremental, direct], "int->int", max_size + 1)
+    direct, tr = prune(dsl, evaluator, manager, max_size=max_size + 1, rtype="int")
+    comp_by_enum([incremental, direct], tr, max_size + 1)
 
 
 def test_is_superset():
     evaluator = Evaluator(dsl, inputs, {}, set())
 
     manager = EquivalenceClassManager()
-    out, tr = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
+    out, old_tr = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
     tr = "int->int"
     base = grammar_by_saturation(dsl, tr)
     evaluator = Evaluator(dsl, inputs, {}, set())
@@ -183,7 +186,7 @@ def test_is_superset():
             should_keep = evaluator.eval(p, tr) is None
     except StopIteration:
         pass
-    e = Enumerator(specialize(out, tr, dsl))
+    e = Enumerator(respecialize(out, tr, type_request_from_specialized(out, dsl), dsl))
     gen = e.enumerate_until_size(max_size)
     p = next(gen)
     try:

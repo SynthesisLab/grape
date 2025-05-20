@@ -1,7 +1,10 @@
 import pytest
 import random
 from grape.automaton.loop_manager import LoopingAlgorithm, add_loops
-from grape.automaton.spec_manager import specialize
+from grape.automaton.spec_manager import (
+    respecialize,
+    type_request_from_specialized,
+)
 from grape.automaton_generator import grammar_by_saturation
 from grape.dsl import DSL
 from grape.enumerator import Enumerator
@@ -115,14 +118,17 @@ def comp_by_enum(grammars: list, tr: str, max_size: int):
 
 @pytest.mark.parametrize("algo", algorithms)
 def test_same_size(algo: LoopingAlgorithm):
-    out_proc = add_loops(out, dsl, algo)
-    comp_by_enum([out, out_proc], tr, max_size)
-    spec_out = specialize(out_proc, tr, dsl)
+    new_out = add_loops(out, dsl, algo)
+    spec_out = respecialize(
+        new_out, tr, type_request_from_specialized(new_out, dsl), dsl
+    )
     comp_by_enum([saturated, spec_out], tr, max_size)
 
 
 @pytest.mark.parametrize("algo", algorithms)
 def test_next_size(algo: LoopingAlgorithm):
-    out_proc = add_loops(out, dsl, algo)
-    spec_out = specialize(out_proc, tr, dsl)
+    new_out = add_loops(out, dsl, algo)
+    spec_out = respecialize(
+        new_out, tr, type_request_from_specialized(new_out, dsl), dsl
+    )
     comp_by_enum([saturated, spec_out], tr, max_size + 1)
