@@ -124,6 +124,8 @@ def main():
     loop_algorithm = args.strategy
     if loop_algorithm != "none":
         grammar = add_loops(reduced_grammar, dsl, loop_algorithm)
+    else:
+        grammar = reduced_grammar
 
     types.check_automaton(grammar, dsl, type_req)
     args_type = types.arguments(type_req)
