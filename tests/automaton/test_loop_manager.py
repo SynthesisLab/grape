@@ -47,7 +47,10 @@ def signed_masking(n: int, mask: int = MAXI) -> int:
     return n & mask if n > 0 else -(-n & mask)
 
 
-sample_dict = {"int": lambda: signed_masking(random.randint(-MAXI, MAXI), MAXI)}
+sample_dict = {
+    "int": lambda: signed_masking(random.randint(-MAXI, MAXI), MAXI),
+    "bool": lambda: random.uniform(0, 1) > 0.5,
+}
 
 inputs = sample_inputs(50, sample_dict)
 
@@ -71,8 +74,7 @@ algorithms = [LoopingAlgorithm.OBSERVATIONAL_EQUIVALENCE, LoopingAlgorithm.GRAPE
 max_size = 5
 manager = EquivalenceClassManager()
 evaluator = Evaluator(dsl, inputs, {}, set())
-out = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
-tr = "int->int"
+tr = "int->none"
 saturated = grammar_by_saturation(dsl, tr)
 
 
@@ -118,6 +120,7 @@ def comp_by_enum(grammars: list, tr: str, max_size: int):
 
 @pytest.mark.parametrize("algo", algorithms)
 def test_same_size(algo: LoopingAlgorithm):
+    out = prune(dsl, evaluator, manager, max_size=max_size)
     new_out = add_loops(out, dsl, algo)
     spec_out = respecialize(
         new_out, tr, type_request_from_specialized(new_out, dsl), dsl
@@ -127,6 +130,7 @@ def test_same_size(algo: LoopingAlgorithm):
 
 @pytest.mark.parametrize("algo", algorithms)
 def test_next_size(algo: LoopingAlgorithm):
+    out = prune(dsl, evaluator, manager, max_size=max_size)
     new_out = add_loops(out, dsl, algo)
     spec_out = respecialize(
         new_out, tr, type_request_from_specialized(new_out, dsl), dsl

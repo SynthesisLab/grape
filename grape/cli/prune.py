@@ -118,7 +118,7 @@ def main():
         evaluator,
         manager,
         args.size,
-        target_type,
+        None,
         base_grammar,
     )
     type_req = type_request_from_specialized(reduced_grammar, dsl)

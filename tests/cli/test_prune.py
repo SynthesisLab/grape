@@ -68,7 +68,6 @@ dsl = DSL(
         ),
     }
 )
-evaluator = Evaluator(dsl, inputs, {}, set())
 max_size = 5
 algorithms = [LoopingAlgorithm.OBSERVATIONAL_EQUIVALENCE, LoopingAlgorithm.GRAPE]
 
@@ -121,8 +120,9 @@ def comp_by_enum(grammars: list, tr: str, max_size: int):
 
 def test_prune():
     manager = EquivalenceClassManager()
-    out = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
-    tr = "int->int"
+    evaluator = Evaluator(dsl, inputs, {}, set())
+    out = prune(dsl, evaluator, manager, max_size=max_size)
+    tr = "int->none"
     g = grammar_by_saturation(dsl, tr)
     spec_out = respecialize(out, tr, type_request_from_specialized(out, dsl), dsl)
     comp_by_enum([spec_out, g], tr, max_size)
@@ -130,10 +130,9 @@ def test_prune():
 
 def test_incremental_same_size():
     manager = EquivalenceClassManager()
-    out = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
-    incremental = prune(
-        dsl, evaluator, manager, max_size=max_size, rtype="int", base_grammar=out
-    )
+    evaluator = Evaluator(dsl, inputs, {}, set())
+    out = prune(dsl, evaluator, manager, max_size=max_size)
+    incremental = prune(dsl, evaluator, manager, max_size=max_size, base_grammar=out)
     assert out.rules == incremental.rules
     assert out.finals == incremental.finals
 
@@ -141,6 +140,7 @@ def test_incremental_same_size():
 @pytest.mark.parametrize("algo", algorithms)
 def test_incremental_same_size_with_loops(algo: LoopingAlgorithm):
     manager = EquivalenceClassManager()
+    evaluator = Evaluator(dsl, inputs, {}, set())
     out = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
     out = add_loops(out, dsl, algo)
 
@@ -157,14 +157,14 @@ def test_incremental_same_size_with_loops(algo: LoopingAlgorithm):
 def test_incremental_next_size(algo: LoopingAlgorithm):
     manager = EquivalenceClassManager()
     evaluator = Evaluator(dsl, inputs, {}, set())
-    out = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
+    out = prune(dsl, evaluator, manager, max_size=max_size)
     out = add_loops(out, dsl, algo)
     evaluator.free_memory()
     incremental = prune(
-        dsl, evaluator, manager, max_size=max_size + 1, rtype="int", base_grammar=out
+        dsl, evaluator, manager, max_size=max_size + 1, base_grammar=out
     )
     evaluator.free_memory()
-    direct = prune(dsl, evaluator, manager, max_size=max_size + 1, rtype="int")
+    direct = prune(dsl, evaluator, manager, max_size=max_size + 1)
     comp_by_enum(
         [incremental, direct], type_request_from_specialized(direct, dsl), max_size + 1
     )
@@ -174,8 +174,8 @@ def test_is_superset():
     evaluator = Evaluator(dsl, inputs, {}, set())
 
     manager = EquivalenceClassManager()
-    out = prune(dsl, evaluator, manager, max_size=max_size, rtype="int")
-    tr = "int->int"
+    out = prune(dsl, evaluator, manager, max_size=max_size)
+    tr = "int->none"
     base = grammar_by_saturation(dsl, tr)
     evaluator = Evaluator(dsl, inputs, {}, set())
     ebase = Enumerator(base)

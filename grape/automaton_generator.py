@@ -60,10 +60,7 @@ def depth_constraint(min_depth: int = 0, max_depth: int = -1) -> Constraint:
     )
 
 
-def commutativity_constraint(
-    dsl: DSL, commutatives: list[tuple[str, list[int]]], type_req: str
-) -> Constraint:
-    arg_types, target_type = types.parse(type_req)
+def commutativity_constraint(commutatives: list[tuple[str, list[int]]]) -> Constraint:
     to_check: dict[str, list[tuple[int, int]]] = {}
     for p, swapped in commutatives:
         if p not in to_check:
@@ -71,8 +68,8 @@ def commutativity_constraint(
         to_check[p].append((swapped[0], swapped[1]))
 
     def transition(p: Program, args: tuple[str, ...]) -> str | None:
-        if isinstance(p, Function):
-            key = str(p.function)
+        if isinstance(p, Primitive):
+            key = str(p)
             if key in to_check:
                 if all(args[i] <= args[j] for i, j in to_check[key]):
                     return key
@@ -83,17 +80,10 @@ def commutativity_constraint(
         else:
             return str(p)
 
-    whatever = target_type.lower() == "none"
-
     return Constraint(
         str,
         transition,
-        lambda s: whatever
-        or (
-            types.return_type(dsl.primitives[s][0]) == target_type
-            if s in dsl.primitives
-            else arg_types[int(s[len("var") :])]
-        ),
+        lambda _: True,
     )
 
 
@@ -187,17 +177,17 @@ def grammar_from_memory(
     type_req: str,
     prev_finals: set[str],
 ) -> tuple[DFTA[str, Program], int]:
+    """
+    Returns (specialized grammar, 1)
+    """
     max_size = max(max(memory[state].keys()) for state in memory)
     args_type = types.arguments(type_req)
     # Compute variable merging: all variables of same type should be merged
-    var_merge = {}
     type2var = {}
-    for i, t in enumerate(args_type):
-        if t in type2var:
-            var_merge[i] = type2var[t]
-        else:
-            type2var[t] = i
-            var_merge[i] = i
+    for t in args_type:
+        if t not in type2var:
+            type2var[t] = len(type2var)
+    var_merge = {i: type2var[t] for i, t in enumerate(args_type)}
     # Produce rules incrementally
     rules: dict[tuple[Program, tuple[str, ...]], str] = {}
     finals: set[str] = set()
@@ -223,22 +213,22 @@ def grammar_from_memory(
 
     # Reproduce original type request to compare number of programs
     # add a rule for each deleted variable
-    added = set()
-    for i, j in var_merge.items():
-        if i == j:
-            continue
-        # data: variable i is renamed as variable j
-        old = Variable(i)
-        for (prog, _), dst in relevant_dfta.rules.copy().items():
-            if isinstance(prog, Variable) and prog.no == j:
-                relevant_dfta.rules[(old, ())] = dst
-                added.add((old, ()))
-    relevant_dfta.refresh_reversed_rules()
-    n = relevant_dfta.trees_until_size(max_size)
-    # Delete them now that they have been used
-    for x in added:
-        del relevant_dfta.rules[x]
-    relevant_dfta.refresh_reversed_rules()
+    # added = set()
+    # for i, j in var_merge.items():
+    #     if i == j:
+    #         continue
+    #     # data: variable i is renamed as variable j
+    #     old = Variable(i)
+    #     for (prog, _), dst in relevant_dfta.rules.copy().items():
+    #         if isinstance(prog, Variable) and prog.no == j:
+    #             relevant_dfta.rules[(old, ())] = dst
+    #             added.add((old, ()))
+    # relevant_dfta.refresh_reversed_rules()
+    # n = relevant_dfta.trees_until_size(max_size)
+    # # Delete them now that they have been used
+    # for x in added:
+    #     del relevant_dfta.rules[x]
+    # relevant_dfta.refresh_reversed_rules()
     # ==================================
 
-    return relevant_dfta, n
+    return relevant_dfta, 1

@@ -73,7 +73,7 @@ def __get_base_grammar__(
         grammar = grammar_by_saturation(
             dsl,
             type_req,
-            [commutativity_constraint(dsl, commutatives, type_req)],
+            [commutativity_constraint(commutatives)],
         )
     else:
         base_grammar = base_dfta
@@ -116,6 +116,8 @@ def prune(
         base_grammar,
         type_req,
     )
+    old_finals = grammar.finals.copy()
+    grammar.finals = set(grammar.all_states)
     enum_ntrees = grammar.trees_until_size(max_size)
     base_ntrees = sum(base_expected_trees.values())
 
@@ -170,9 +172,9 @@ def prune(
     pbar.update(n)
     pbar.close()
     evaluator.free_memory()
-    reduced_grammar, t = grammar_from_memory(
-        enumerator.memory, type_req, grammar.finals
-    )
+    grammar.finals = old_finals
+    reduced_grammar, t = grammar_from_memory(enumerator.memory, type_req, old_finals)
+    t = reduced_grammar.trees_until_size(max_size)
     print(f"at size {max_size} programs (after graping): {t:.2e}")
     print(
         "\tmethod: ratio no graping | ratio base | ratio graped",
