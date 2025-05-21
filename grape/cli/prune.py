@@ -124,7 +124,7 @@ def main():
     type_req = type_request_from_specialized(reduced_grammar, dsl)
     loop_algorithm = args.strategy
     if loop_algorithm != "none":
-        grammar = add_loops(reduced_grammar, dsl, loop_algorithm)
+        grammar = add_loops(reduced_grammar, dsl, loop_algorithm, use_tqdm=True)
     else:
         grammar = reduced_grammar
 

@@ -2,11 +2,13 @@ from enum import StrEnum
 import itertools
 from typing import Generator
 
+from tqdm import tqdm
+
 from grape import types
 from grape.automaton.spec_manager import is_specialized
 from grape.automaton.tree_automaton import DFTA
 from grape.dsl import DSL
-from grape.program import Function, Primitive, Program, Variable
+from grape.program import Primitive, Program, Variable
 
 
 class LoopingAlgorithm(StrEnum):
@@ -157,10 +159,18 @@ def __all_sub_args__(
         yield new_args
 
 
+def __product__(elements: list[int]) -> int:
+    out = 1
+    for x in elements:
+        out *= x
+    return out
+
+
 def add_loops(
     dfta: DFTA[str, Program | str],
     dsl: DSL,
     algorithm: LoopingAlgorithm = LoopingAlgorithm.OBSERVATIONAL_EQUIVALENCE,
+    use_tqdm: bool = False,
 ) -> DFTA[str, Program]:
     """
     Assumes specialized DFTA, one state = one letter and that variants are mapped.
@@ -172,7 +182,9 @@ def add_loops(
     else:
         match algorithm:
             case LoopingAlgorithm.OBSERVATIONAL_EQUIVALENCE:
-                is_allowed = lambda *args, **kwargs: True
+
+                def is_allowed(*args, **kwargs):
+                    return True
             case LoopingAlgorithm.GRAPE:
 
                 def is_allowed(
@@ -238,10 +250,27 @@ def add_loops(
         new_dfta.refresh_reversed_rules()
         merge_memory = {}
         largest_merge = {}
+
+        update = lambda: 1
+        if use_tqdm:
+            pbar = tqdm(
+                total=sum(
+                    __product__(
+                        [
+                            len(states_by_types[arg_t])
+                            for arg_t in types.arguments(Ptype)
+                        ]
+                    )
+                    for (Ptype, _) in dsl.primitives.values()
+                ),
+                desc="adding loops",
+            )
+            update = lambda: pbar.update()
         for P, (Ptype, _) in dsl.primitives.items():
             args_types, rtype = types.parse(Ptype)
             possibles = [states_by_types[arg_t] for arg_t in args_types]
             for combi in itertools.product(*possibles):
+                update()
                 key = (P, combi)
                 dst_size = sum(map(lambda x: state_to_size[x], combi)) + 1
                 if dst_size > max_size and is_allowed(
@@ -266,7 +295,8 @@ def add_loops(
                     )
                     assert new_state in state_to_size
                     new_dfta.rules[key] = new_state
-
+        if use_tqdm:
+            pbar.close()
         for no in virtual_vars:
             dst = str(Variable(no))
             del new_dfta.rules[(dst, tuple())]
