@@ -88,9 +88,7 @@ def __find_merge__(
                 has_equivalent = True
                 break
 
-        if has_equivalent and (
-            best_candidate is None or size_best < state_to_size[candidate]
-        ):
+        if has_equivalent:
             size_best = state_to_size[candidate]
             best_candidate = candidate
     return best_candidate
