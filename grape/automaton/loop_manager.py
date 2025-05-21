@@ -1,3 +1,4 @@
+from collections import defaultdict
 from enum import StrEnum
 import itertools
 from typing import Generator
@@ -107,13 +108,15 @@ def __get_largest_merges__(
     dfta: DFTA[str, str],
     state_to_letter: dict[str, tuple[str, bool]],
     state_to_size: dict[str, int],
-    merge_memory: dict[(str, str), bool],
+    merge_memory: dict[tuple[str, str], bool],
     largest_merge: dict[str, str],
-    states_by_types: dict[str, list[str]],
+    states_by_types_and_letter: dict[tuple[str, str], list[str]],
 ) -> list[str]:
     res = largest_merge.get(state, None)
     if res is None:
-        candidates = [S for S in states_by_types.values() if state in S].pop(0)
+        candidates = [S for S in states_by_types_and_letter.values() if state in S].pop(
+            0
+        )
         out = []
         size = -1
         for candidate in candidates:
@@ -135,9 +138,9 @@ def __all_sub_args__(
     dfta: DFTA[str, str],
     state_to_letter: dict[str, tuple[str, bool]],
     state_to_size: dict[str, int],
-    merge_memory: dict[(str, str), bool],
+    merge_memory: dict[tuple[str, str], bool],
     largest_merge: dict[str, str],
-    states_by_types: dict[str, list[str]],
+    states_by_types_and_letter: dict[tuple[str, str], list[str]],
 ) -> Generator[str, None, None]:
     possibles = list(
         map(
@@ -148,7 +151,7 @@ def __all_sub_args__(
                 state_to_size,
                 merge_memory,
                 largest_merge,
-                states_by_types,
+                states_by_types_and_letter,
             ),
             combi,
         )
@@ -191,9 +194,9 @@ def add_loops(
                     dfta: DFTA[str, str | Program],
                     state_to_letter: dict[str, tuple[str, bool]],
                     state_to_size: dict[str, int],
-                    merge_memory: dict[(str, str), bool],
+                    merge_memory: dict[tuple[str, str], bool],
                     largest_merge: dict[str, str],
-                    states_by_types: dict[str, list[str]],
+                    states_by_types_and_letter: dict[tuple[str, str], list[str]],
                 ) -> bool:
                     return all(
                         (P, sub_args) in new_dfta
@@ -204,7 +207,7 @@ def add_loops(
                             state_to_size,
                             merge_memory,
                             largest_merge,
-                            states_by_types,
+                            states_by_types_and_letter,
                         )
                         if sum(map(lambda x: state_to_size[x], sub_args)) + 1
                         <= max_size
@@ -248,7 +251,19 @@ def add_loops(
         new_dfta.refresh_reversed_rules()
         merge_memory = {}
         largest_merge = {}
-
+        states_by_types_and_letter = defaultdict(list)
+        for t, states in states_by_types.items():
+            later = []
+            for s in states:
+                if state_to_letter[s][1]:
+                    later.append(s)
+                else:
+                    key = (t, state_to_letter[s][0])
+                    states_by_types_and_letter[key].append(s)
+            for (tt, _), val in states_by_types_and_letter.items():
+                if tt == t:
+                    for x in later:
+                        val.append(x)
         update = lambda: 1
         if use_tqdm:
             pbar = tqdm(
@@ -279,14 +294,14 @@ def add_loops(
                     state_to_size,
                     merge_memory,
                     largest_merge,
-                    states_by_types,
+                    states_by_types_and_letter,
                 ):
                     assert key not in new_dfta.rules
                     new_state = __find_merge__(
                         new_dfta,
                         P,
                         combi,
-                        states_by_types[rtype],
+                        states_by_types_and_letter[(rtype, P)],
                         merge_memory,
                         state_to_letter,
                         state_to_size,
