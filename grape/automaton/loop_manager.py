@@ -119,9 +119,13 @@ def __get_largest_merges__(
         )
         out = []
         size = -1
+        my_size = state_to_size[state]
         for candidate in candidates:
-            if state_to_size[candidate] < size:
+            cs = state_to_size[candidate]
+            if cs < size:
                 break
+            elif cs >= my_size:
+                continue
             if __can_states_merge(
                 dfta.reversed_rules, state, candidate, merge_memory, state_to_letter
             ):
