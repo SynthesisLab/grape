@@ -58,6 +58,10 @@ class DFTA(Generic[U, V]):
         for r, s in self.rules.items():
             self.reversed_rules[s].append(r)
 
+    def copy(self) -> "DFTA[U, V]":
+        """Produces a shallow copy of this automaton."""
+        return DFTA({k: v for k, v in self.rules.items()}, {s for s in self.finals})
+
     def size(self) -> int:
         """
         Return the size of the DFTA which is the number of rules.
