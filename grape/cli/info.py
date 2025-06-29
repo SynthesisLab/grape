@@ -31,6 +31,7 @@ def main():
     print("states:", len(dfta.all_states))
     print("max arity:", dfta.max_arity())
     print("rules:", dfta.size())
+    print("symbols:", dfta.symbols())
     print("reduced:", old_rules == dfta.rules)
     print("specialied:", specialized)
     if not dfta.is_unbounded():
