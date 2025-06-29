@@ -68,6 +68,13 @@ class DFTA(Generic[U, V]):
         """
         return len(self.rules)
 
+    def symbols(self) -> int:
+        """
+        Return the number of symbols of the DFTA which is a proxy for memory size.
+        THis does not count letters.
+        """
+        return sum(len(args) + 1 for _, args in self.rules.keys())
+
     @property
     def states(self) -> Set[U]:
         """
