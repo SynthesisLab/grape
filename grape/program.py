@@ -22,9 +22,12 @@ class Variable(Program):
     def __init__(self, no: int):
         self.no = no
         self._hash = no
+        self._str = None
 
     def __str__(self):
-        return f"var{self.no}"
+        if self._str is None:
+            self._str = f"var{self.no}"
+        return self._str
 
     def size(self) -> int:
         return 1
@@ -51,10 +54,13 @@ class Function(Program):
         self.function = function
         self.arguments = arguments
         self._hash = hash((function, *arguments))
+        self._str = None
 
     def __str__(self):
-        args = " ".join(map(str, self.arguments))
-        return f"({self.function} {args})"
+        if self._str is None:
+            args = " ".join(map(str, self.arguments))
+            self._str = f"({self.function} {args})"
+        return self._str
 
     def size(self) -> int:
         return self.function.size() + sum(arg.size() for arg in self.arguments)
