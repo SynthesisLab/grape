@@ -40,8 +40,8 @@ class DFTA(Generic[U, V]):
         ],
         finals: Set[U],
     ) -> None:
-        self.finals = {s for s in sorted(finals, key=hash)}
-        self.rules = {k: rules[k] for k in sorted(rules, key=hash)}
+        self.finals = {s for s in sorted(finals, key=str)}
+        self.rules = {k: rules[k] for k in sorted(rules, key=str)}
         self.reversed_rules: Dict[
             U,
             List[
