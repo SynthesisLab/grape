@@ -409,7 +409,7 @@ class DFTA(Generic[U, V]):
         """
         Returns true if the grammar produces unbounded programs.
         """
-        reachable_from: dict[U, set[V]] = defaultdict(set)
+        reachable_from: dict[U, set[U]] = defaultdict(set)
         for (P, args), dst in self.rules.items():
             reachable_from[dst].update(args)
 
@@ -428,22 +428,8 @@ class DFTA(Generic[U, V]):
 
     def compute_max_size_and_depth(self) -> tuple[int, int]:
         """
-        Return max size and max depth
+        Return max size and max depth, this will loop endlessly if this grammar is unbounded.
         """
-        # Compute transitive closure
-        reachable_from: dict[U, set[V]] = defaultdict(set)
-        for (P, args), dst in self.rules.items():
-            reachable_from[dst].update(args)
-
-        updated = True
-        while updated:
-            updated = False
-            for dst, reachables in reachable_from.copy().items():
-                before = len(reachables)
-                for S in reachables.copy():
-                    reachables.update(reachable_from[S])
-                if len(reachables) != before:
-                    updated = True
         max_size_by_state: dict[U, int] = {state: 0 for state in self.states}
         max_depth_by_state: dict[U, int] = {state: 0 for state in self.states}
         for (P, args), dst in self.rules.items():
@@ -481,3 +467,58 @@ class DFTA(Generic[U, V]):
             lines.append(f"{dst} <- '{P}' {add}")
 
         return s + "\n".join(sorted(lines))
+
+    def has_unproductive_rules(self) -> bool:
+        """
+        Returns true iff a rule is unproductive (including unreachable).
+        """
+        new_states = self.states
+        new_rules = {
+            (letter, args): dst
+            for (letter, args), dst in self.rules.items()
+            if dst in new_states and all(s in new_states for s in args)
+        }
+        if new_rules != self.rules:
+            return True
+        consumed = self.__get_consumed__()
+        for _, dst in list(self.rules.items()):
+            if dst not in consumed:
+                return True
+
+        return False
+
+    def __has_cloning_derivation__(self) -> bool:
+        # Compute transitive closure
+        reachable_from: dict[U, set[U]] = defaultdict(set)
+        for (P, args), dst in self.rules.items():
+            reachable_from[dst].update(args)
+
+        updated = True
+        while updated:
+            updated = False
+            for dst, reachables in reachable_from.copy().items():
+                before = len(reachables)
+                for S in reachables.copy():
+                    reachables.update(reachable_from[S])
+                if len(reachables) != before:
+                    updated = True
+                    if dst in reachables and any(
+                        len(args) > 1
+                        for S in reachables
+                        for _, args in self.reversed_rules[S]
+                    ):
+                        return True
+        return False
+
+    def is_tree_like(self) -> bool:
+        """
+        Returns true iff all of the following are true:
+            - |derivations| >= |states| + 2
+            - there is no unusable production rules
+            - there is a derivation by transitive closure S ->* w S S
+        """
+        return (
+            self.size() >= len(self.all_states) + 2
+            and not self.has_unproductive_rules()
+            and self.__has_cloning_derivation__()
+        )

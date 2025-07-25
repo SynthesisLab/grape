@@ -33,13 +33,14 @@ def main():
     print("rules:", dfta.size())
     print("symbols:", dfta.symbols())
     print("reduced:", old_rules == dfta.rules)
-    print("specialied:", specialized)
+    print("specialised:", specialized)
     if not dfta.is_unbounded():
         size, depth = dfta.compute_max_size_and_depth()
         print("max program size:", size)
         print("max program depth:", depth)
     else:
-        print("unbounded programs:", dfta.is_unbounded())
+        print("grammar produces unbounded programs")
+        print("tree like:", dfta.is_tree_like())
 
 
 if __name__ == "__main__":
